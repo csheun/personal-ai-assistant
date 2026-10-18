@@ -1,9 +1,9 @@
 /**
- * In-memory implementation of ApiClient. Behaves like the future FastAPI
- * backend (latency, validation errors, 404/409s, event streams) without any
- * network calls or real external actions.
+ * Demo-mode WorkflowClient: the whole backend simulated in the browser.
+ * Behaves like FastAPI (latency, validation errors, 404/409s, event streams)
+ * with no network calls and no real external actions.
  */
-import type { ApiClient } from "@/lib/api/client";
+import type { ConnectionStatus, RunStreamHandlers, WorkflowClient } from "@/lib/api/client";
 import {
   ApiError,
   type ApprovalDecision,
@@ -14,7 +14,6 @@ import {
   type SendMessageRequest,
   type SendMessageResponse,
   type UsageStats,
-  type WorkflowEvent,
   type WorkflowRun,
   type WorkflowTask,
 } from "@/lib/api/types";
@@ -36,7 +35,7 @@ export interface MockClientOptions {
 
 export const MAX_MESSAGE_LENGTH = 4000;
 
-export class MockApiClient implements ApiClient {
+export class MockWorkflowClient implements WorkflowClient {
   private readonly scheduler: Scheduler;
   private readonly speed: number;
   private readonly latencyMs: number;
@@ -52,7 +51,7 @@ export class MockApiClient implements ApiClient {
     if (options.seed) this.seed();
   }
 
-  // --- ApiClient -----------------------------------------------------------
+  // --- WorkflowClient ------------------------------------------------------
 
   listConversations(): Promise<Conversation[]> {
     return this.respond(() => [...this.conversations.values()].sort((a, b) => b.updated_at.localeCompare(a.updated_at)));
@@ -102,20 +101,27 @@ export class MockApiClient implements ApiClient {
     });
   }
 
-  resolveApproval(approvalId: ID, decision: ApprovalDecision): Promise<ApprovalRequest> {
-    return this.respond(() => {
-      const engine = [...this.engines.values()].find((e) => e.run.approvals.some((a) => a.id === approvalId));
-      if (!engine) throw new ApiError(404, "Approval request not found.");
-      return engine.resolveApproval(approvalId, decision);
-    });
+  resolveApproval(runId: ID, approvalId: ID, decision: ApprovalDecision): Promise<ApprovalRequest> {
+    return this.respond(() => this.engine(runId).resolveApproval(approvalId, decision));
   }
 
   getStats(): Promise<UsageStats> {
     return this.respond(() => computeStats([...this.engines.values()].map((e) => e.run)));
   }
 
-  subscribeToRun(runId: ID, onEvent: (event: WorkflowEvent) => void, afterSeq = 0): () => void {
-    return this.engine(runId).subscribe((event) => onEvent(structuredClone(event)), afterSeq);
+  subscribeToRun(runId: ID, handlers: RunStreamHandlers, afterId = 0): () => void {
+    handlers.onStatusChange?.("live");
+    const unsubscribe = this.engine(runId).subscribe((event) => handlers.onEvent(structuredClone(event)), afterId);
+    return () => {
+      unsubscribe();
+      handlers.onStatusChange?.("closed");
+    };
+  }
+
+  /** Nothing to connect to in demo mode. */
+  watchConnection(listener: (status: ConnectionStatus) => void): () => void {
+    listener("online");
+    return () => {};
   }
 
   // --- internals -----------------------------------------------------------
@@ -135,7 +141,7 @@ export class MockApiClient implements ApiClient {
 
   private engine(runId: ID): WorkflowEngine {
     const engine = this.engines.get(runId);
-    if (!engine) throw new ApiError(404, "Run not found.");
+    if (!engine) throw new ApiError(404, "Workflow run not found.");
     return engine;
   }
 
@@ -192,7 +198,7 @@ export class MockApiClient implements ApiClient {
       finished_at: null,
       summary: null,
       approvals: [],
-      last_event_seq: 0,
+      last_event_id: 0,
     };
     const failures = new Set(plan.failTaskIds);
 

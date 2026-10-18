@@ -4,6 +4,28 @@ AutoFlow is a personal automation and workflow platform for building, scheduling
 
 The project aims to provide a simple way to connect data sources, APIs, AI, and notification services into reusable workflows while exploring the engineering challenges behind reliable workflow execution.
 
+## Run locally
+
+Two terminals:
+
+```bash
+# 1. Backend: FastAPI on http://localhost:8000
+cd backend
+python3.13 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+uvicorn app.main:app --reload
+```
+
+```bash
+# 2. Frontend: Next.js on http://localhost:3000
+cd frontend
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+Everything is mocked for now (planner, tools, Telegram). See [`backend/README.md`](backend/README.md) and [`frontend/README.md`](frontend/README.md) for the API, architecture and tests.
+
 ## Overview
 
 A workflow consists of a trigger and a series of tasks.

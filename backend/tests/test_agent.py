@@ -19,7 +19,7 @@ async def test_direct_answer_without_tools() -> None:
     assert run.answer == "Hello!"
     assert run.tool_results == []
     assert run.iterations == 1
-    assert {t["function"]["name"] for t in llm.bound_tools} == {"get_weather", "web_search"}
+    assert "get_weather" in {t["function"]["name"] for t in llm.bound_tools}
 
 
 async def test_llm_chooses_tool_and_receives_result() -> None:

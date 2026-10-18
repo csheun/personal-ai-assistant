@@ -3,12 +3,12 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 
 import { useAssistantController, type AssistantController } from "@/hooks/use-assistant";
-import { createApiClient, type ApiClient } from "@/lib/api";
+import { createWorkflowClient, type WorkflowClient } from "@/lib/api";
 
 const AssistantContext = createContext<AssistantController | null>(null);
 
-export function AssistantProvider({ children, client }: { children: ReactNode; client?: ApiClient }) {
-  const [api] = useState(() => client ?? createApiClient());
+export function AssistantProvider({ children, client }: { children: ReactNode; client?: WorkflowClient }) {
+  const [api] = useState(() => client ?? createWorkflowClient());
   const controller = useAssistantController(api);
   return <AssistantContext.Provider value={controller}>{children}</AssistantContext.Provider>;
 }

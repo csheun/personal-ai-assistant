@@ -1,6 +1,11 @@
-# Frontend: Personal Assistant (mock mode)
+# Frontend: Personal Assistant
 
-Next.js 16 + TypeScript + Tailwind CSS 4. Everything runs in the browser against an in-memory **mock API**. No LLM calls, no external services, and nothing is ever sent anywhere.
+Next.js 16 + TypeScript + Tailwind CSS 4. It has two interchangeable backends:
+
+- **HTTP mode**: the FastAPI server in `../backend` runs the workflows and streams progress over SSE.
+- **Demo mode**: the same behavior simulated in the browser, so you need no backend.
+
+In both modes all tools are mocked: no LLM calls, no external services, and nothing is sent anywhere.
 
 ![Desktop: run in progress](docs/screenshots/desktop-3-running.png)
 
@@ -11,13 +16,16 @@ Requires Node 20.9 or newer.
 ```bash
 cd frontend
 npm install
-npm run dev            # http://localhost:3000
+cp .env.example .env.local     # HTTP mode; start the backend too (see ../backend/README.md)
+npm run dev                    # http://localhost:3000
 ```
+
+For demo mode without a backend, set `NEXT_PUBLIC_API_MODE=mock` in `.env.local` (or delete the file). Restart `npm run dev` after changing it.
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | Unit tests (Vitest): engine, graph, planner, mock client, metrics |
-| `npm run test:e2e` | Browser tests (Playwright, desktop + Pixel 7) against a production build. First run: `npx playwright install chromium` |
+| `npm test` | Unit tests (Vitest): engine, graph, planner, both clients, state, contract with the backend |
+| `npm run test:e2e` | Browser tests (Playwright). Starts FastAPI and two production builds, then runs the UI suite in both modes on desktop and Pixel 7. First run: `npx playwright install chromium` |
 | `npm run build` | Production build |
 | `npm run typecheck` / `npm run lint` | Static checks |
 
@@ -25,56 +33,39 @@ npm run dev            # http://localhost:3000
 - **"Give me a morning briefing and send it to Telegram"**: three tasks in parallel, a summary, then an approval request.
 - **"…and simulate failure"**: the first task fails and its dependants are skipped.
 - **"simulate error"**: the chat request fails (503), with a retry option.
-- Append `?mock_speed=3` to the URL to slow every task down 3×.
+- **Refresh mid-run** (HTTP mode): the open conversation is in the URL (`?c=…`), so the run is reloaded from the server and the stream resumes.
+- Demo mode only: append `?mock_speed=3` to slow every task down 3×.
 
 ## Architecture
 
 ```
 src/
-  lib/api/types.ts        API contract (snake_case, same JSON FastAPI will send)
-  lib/api/client.ts       ApiClient interface: the only thing the UI calls
-  lib/api/index.ts        createApiClient(): picks mock vs real backend
-  lib/api/mock/           MOCK ONLY: planner, engine, tool outputs, seed data
-  lib/workflow/           pure logic shared by mock + real: reducer, graph, metrics
+  lib/api/types.ts        API contract (snake_case JSON); mirrors backend/app/workflows/models.py
+  lib/api/client.ts       WorkflowClient interface: the only thing the UI calls
+  lib/api/http-client.ts  HttpWorkflowClient: fetch + EventSource against FastAPI
+  lib/api/mock/           MockWorkflowClient + in-browser engine, planner, tools, seed data
+  lib/api/index.ts        createWorkflowClient(): picks a client from NEXT_PUBLIC_API_MODE
+  lib/workflow/           pure logic: reducer (applyEvent), graph, metrics
   lib/state/              app state reducer (no effects)
   hooks/use-assistant.ts  effects: loading, sending, one event stream per live run
-  components/             rendering only; no imports from lib/api/mock
+  components/             rendering only; never imports from lib/api/mock
 ```
 
-**Events are the source of truth.** The engine never edits a run directly. It emits a `WorkflowEvent`, and `applyEvent()` (`lib/workflow/reducer.ts`) produces the new state. The UI runs the same reducer on the streamed events, so the panel always shows exactly what the backend says happened. FastAPI's SSE stream will feed the same function.
+**Events are the source of truth.** The run panel is the result of applying `WorkflowEvent`s with `applyEvent()`. In HTTP mode the server streams them. In demo mode the in-browser engine produces identical ones. `tests/unit/contract.test.ts` replays streams recorded from the Python runner (`../contracts/workflow-scenarios.json`) and checks the result equals the backend's own snapshot, so the two reducers can't drift apart.
 
-## Mock API contract
+**Streaming and recovery** (HTTP mode):
+- The hook opens one SSE stream per unfinished run, starting after the snapshot's `last_event_id`.
+- If the connection drops, the panel says "Reconnecting". `EventSource` retries, and the server resumes from `Last-Event-ID`. Duplicate events are dropped by id.
+- Snapshots returned by **Run plan** and **Cancel** are applied immediately, so the UI stays correct even while the stream is down.
+- If the server is unreachable, requests fail with a clear message, and sending offers "Send again".
 
-| Method | Route | Body / returns |
-| --- | --- | --- |
-| GET | `/api/conversations` | `Conversation[]` |
-| GET | `/api/conversations/{id}/messages` | `ChatMessage[]` |
-| POST | `/api/chat` | `{conversation_id, message}` → `{conversation, user_message, assistant_message, run}`. `run` starts as `planned` |
-| GET | `/api/runs/{id}` | `WorkflowRun` (includes `last_event_seq`) |
-| POST | `/api/runs/{id}/start` | `WorkflowRun` (409 if already started) |
-| POST | `/api/runs/{id}/cancel` | `WorkflowRun` (409 if finished) |
-| POST | `/api/approvals/{id}` | `{decision: "approve" \| "reject"}` → `ApprovalRequest` (409 if resolved) |
-| GET | `/api/stats` | `UsageStats` |
-| GET | `/api/runs/{id}/events` | SSE stream of `WorkflowEvent`, `id:` = `seq`, resumable with `Last-Event-ID` |
+## API contract
 
-Event types: `run.started`, `task.started`, `task.completed`, `task.failed`, `task.skipped`, `task.cancelled`, `approval.requested`, `approval.resolved`, `run.completed`, `run.failed`, `run.cancelled`. Full shapes are in [`src/lib/api/types.ts`](src/lib/api/types.ts).
+Routes, event types and execution rules are documented in [`../backend/README.md`](../backend/README.md#api). The TypeScript shapes are in [`src/lib/api/types.ts`](src/lib/api/types.ts).
 
-**Execution rules the backend must keep:**
-- A task starts when all its dependencies have completed.
-- If a dependency fails, is skipped or is cancelled, its dependants are skipped.
-- `requires_approval` tasks pause in `waiting_for_approval`. Approving runs the task; rejecting skips it.
-- Cancelling expires open approvals and cancels every unfinished task.
-- A run fails if any task failed; otherwise it completes, even if an approval was rejected.
+## What Milestone 4 changes here
 
-## Connecting FastAPI
-
-1. Write `HttpApiClient implements ApiClient` with `fetch` for the REST routes. Map `{"detail": ...}` errors to `ApiError(status, message)`.
-2. Implement `subscribeToRun` with `EventSource(`${API}/api/runs/${id}/events`)`. Pass `afterSeq` as `Last-Event-ID` (or `?after_seq=`), `JSON.parse` each message, and return `() => source.close()`.
-3. Return it from `createApiClient()` when `NEXT_PUBLIC_API_URL` is set.
-4. Port the execution rules above to the backend (LangGraph + the DAG scheduler), emitting the same events.
-5. Delete `lib/api/mock/` once you no longer need it for demos. Nothing in `components/`, `hooks/` or `lib/workflow/` changes.
-
-The FastAPI app will also need CORS for the frontend origin. The approval endpoint must be the only path that can trigger side-effecting tools.
+Little to nothing. Real tools and an LLM planner run on the server and emit the same events. Expect only new tool names in `ToolName` and `TOOL_LABELS`, and richer `output` shapes in the results panel. The demo mode can stay as an offline demo or be removed; nothing outside `lib/api/mock/` depends on it.
 
 ## Screenshots
 

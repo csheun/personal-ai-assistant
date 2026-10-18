@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, Square, Workflow } from "lucide-react";
+import { Play, Square, WifiOff, Workflow } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useAssistant } from "@/components/assistant-provider";
@@ -67,6 +67,12 @@ export function RunPanel() {
             )}
           </div>
         </div>
+        {state.streams[run.id] === "reconnecting" && LIVE.has(run.status) && (
+          <p role="status" className="flex items-center gap-2 rounded-lg bg-sunk px-3 py-2 text-sm text-muted">
+            <WifiOff className="size-4" aria-hidden />
+            Lost the live connection. Reconnecting; the run keeps going on the server.
+          </p>
+        )}
         {actionError && (
           <p role="alert" className="flex items-center justify-between gap-2 rounded-lg bg-fail-soft px-3 py-2 text-sm text-fail">
             {actionError}
@@ -78,7 +84,13 @@ export function RunPanel() {
       </header>
 
       <div className="flex-1 space-y-6 px-5 py-5">
-        {approval && <ApprovalCard key={approval.id} approval={approval} onResolve={resolveApproval} />}
+        {approval && (
+          <ApprovalCard
+            key={approval.id}
+            approval={approval}
+            onResolve={(approvalId, decision) => resolveApproval(run.id, approvalId, decision)}
+          />
+        )}
 
         {run.status === "completed" && run.summary && (
           <section aria-labelledby="summary-heading" className="rounded-xl bg-ok-soft/60 p-4 ring-1 ring-ok/20">

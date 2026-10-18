@@ -1,21 +1,12 @@
-from typing import Annotated
+from fastapi import APIRouter
 
-from fastapi import APIRouter, Depends, HTTPException, status
-
-from app.agent.service import AgentService, IterationLimitError, LLMUpstreamError
-from app.api.dependencies import get_agent
-from app.api.schemas import ChatRequest, ChatResponse
+from app.api.dependencies import Workflows
+from app.workflows.models import SendMessageRequest, SendMessageResponse
 
 router = APIRouter(tags=["chat"])
 
 
-@router.post("/chat", response_model=ChatResponse)
-async def chat(body: ChatRequest, agent: Annotated[AgentService, Depends(get_agent)]) -> ChatResponse:
-    try:
-        run = await agent.run(body.message)
-    except LLMUpstreamError as exc:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
-    except IterationLimitError as exc:
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
-
-    return ChatResponse(answer=run.answer, tool_calls=run.tool_results, iterations=run.iterations, model=agent.model_name)
+@router.post("/chat", response_model=SendMessageResponse)
+async def send_message(body: SendMessageRequest, workflows: Workflows) -> SendMessageResponse:
+    """Replies to a message. If the reply proposes a workflow, `run` is returned in status "planned"."""
+    return workflows.send_message(body)

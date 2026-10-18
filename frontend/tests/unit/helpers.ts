@@ -21,7 +21,7 @@ export function makeRun(specs: TaskSpec[]): WorkflowRun {
     finished_at: null,
     summary: null,
     approvals: [],
-    last_event_seq: 0,
+    last_event_id: 0,
     tasks: specs.map(
       (s): WorkflowTask => ({
         id: s.id,
@@ -54,8 +54,8 @@ export function makeEngine(specs: TaskSpec[]): WorkflowEngine {
     durationFor: (t) => byId.get(t.id)?.ms ?? 1000,
     execute: (t) =>
       byId.get(t.id)?.fail
-        ? { tool_name: t.tool_name, ok: false, output: null, error: { code: "x", message: "boom" }, mocked: true }
-        : { tool_name: t.tool_name, ok: true, output: { id: t.id }, error: null, mocked: true },
+        ? { tool_name: t.tool_name, arguments: {}, ok: false, output: null, error: { code: "simulated_failure", message: "boom" }, mocked: true }
+        : { tool_name: t.tool_name, arguments: {}, ok: true, output: { id: t.id }, error: null, mocked: true },
     approvalFor: () => ({ action: "Send it", preview: { destination: "Telegram", body: "Hello" } }),
     summarize: () => "All done.",
     newId: (p) => `${p}_${++ids}`,

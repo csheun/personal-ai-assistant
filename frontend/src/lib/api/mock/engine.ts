@@ -52,7 +52,12 @@ export interface EngineOptions {
   newId(prefix: string): ID;
 }
 
-type EventBody = WorkflowEvent extends infer E ? (E extends WorkflowEvent ? Omit<E, "run_id" | "seq" | "timestamp"> : never) : never;
+/** What a caller supplies to `emit`; the engine fills in id, run_id and timestamp. */
+type EventBody = WorkflowEvent extends infer E
+  ? E extends WorkflowEvent
+    ? Pick<E, "type" | "data"> & { task_id?: ID }
+    : never
+  : never;
 type Listener = (event: WorkflowEvent) => void;
 
 export class WorkflowEngine {
@@ -77,16 +82,16 @@ export class WorkflowEngine {
     return this.history;
   }
 
-  /** Replays events after `afterSeq` (like SSE Last-Event-ID), then streams live ones. */
-  subscribe(listener: Listener, afterSeq = 0): () => void {
-    this.history.filter((e) => e.seq > afterSeq).forEach(listener);
+  /** Replays events after `afterId` (like SSE Last-Event-ID), then streams live ones. */
+  subscribe(listener: Listener, afterId = 0): () => void {
+    this.history.filter((e) => e.id > afterId).forEach(listener);
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
   start(): void {
     if (this.state.status !== "planned") throw new ApiError(409, "This run has already started.");
-    this.emit({ type: "run.started" });
+    this.emit({ type: "run.started", data: {} });
     this.advance();
   }
 
@@ -103,13 +108,13 @@ export class WorkflowEngine {
       this.emit({
         type: "approval.resolved",
         task_id: approval.task_id,
-        approval: { ...approval, status: "expired", resolved_at: this.isoNow() },
+        data: { approval: { ...approval, status: "expired", resolved_at: this.isoNow() } },
       });
     }
     for (const task of this.state.tasks.filter((t) => !isTerminal(t.status))) {
-      this.emit({ type: "task.cancelled", task_id: task.id });
+      this.emit({ type: "task.cancelled", task_id: task.id, data: {} });
     }
-    this.emit({ type: "run.cancelled" });
+    this.emit({ type: "run.cancelled", data: {} });
   }
 
   resolveApproval(approvalId: ID, decision: ApprovalDecision): ApprovalRequest {
@@ -122,12 +127,16 @@ export class WorkflowEngine {
       status: decision === "approve" ? "approved" : "rejected",
       resolved_at: this.isoNow(),
     };
-    this.emit({ type: "approval.resolved", task_id: approval.task_id, approval: resolved });
+    this.emit({ type: "approval.resolved", task_id: approval.task_id, data: { approval: resolved } });
 
     if (decision === "approve") {
       this.startTask(this.task(approval.task_id));
     } else {
-      this.emit({ type: "task.skipped", task_id: approval.task_id, reason: "You rejected this action, so nothing was sent." });
+      this.emit({
+        type: "task.skipped",
+        task_id: approval.task_id,
+        data: { reason: "You rejected this action, so nothing was sent." },
+      });
       this.advance();
     }
     return resolved;
@@ -143,7 +152,11 @@ export class WorkflowEngine {
     let blocked = blockedTasks(this.state.tasks);
     while (blocked.length) {
       for (const { task, blocker } of blocked) {
-        this.emit({ type: "task.skipped", task_id: task.id, reason: `Skipped because "${blocker.title}" didn't complete.` });
+        this.emit({
+          type: "task.skipped",
+          task_id: task.id,
+          data: { reason: `Skipped because "${blocker.title}" didn't complete.` },
+        });
       }
       blocked = blockedTasks(this.state.tasks);
     }
@@ -167,11 +180,11 @@ export class WorkflowEngine {
       created_at: this.isoNow(),
       resolved_at: null,
     };
-    this.emit({ type: "approval.requested", task_id: task.id, approval });
+    this.emit({ type: "approval.requested", task_id: task.id, data: { approval } });
   }
 
   private startTask(task: WorkflowTask): void {
-    this.emit({ type: "task.started", task_id: task.id });
+    this.emit({ type: "task.started", task_id: task.id, data: {} });
     const duration = this.options.durationFor(task);
     const timer = this.options.scheduler.setTimeout(() => this.finishTask(task.id, duration), duration);
     this.timers.set(task.id, timer);
@@ -184,15 +197,10 @@ export class WorkflowEngine {
     const result = this.options.execute(task, upstream);
 
     if (result.ok) {
-      this.emit({ type: "task.completed", task_id: taskId, result, duration_ms: duration });
+      this.emit({ type: "task.completed", task_id: taskId, data: { result, duration_ms: duration } });
     } else {
-      this.emit({
-        type: "task.failed",
-        task_id: taskId,
-        result,
-        duration_ms: duration,
-        reason: result.error?.message ?? "The tool failed.",
-      });
+      const reason = result.error?.message ?? "The tool failed.";
+      this.emit({ type: "task.failed", task_id: taskId, data: { result, duration_ms: duration, reason } });
     }
     this.advance();
   }
@@ -201,9 +209,9 @@ export class WorkflowEngine {
     const failed = this.state.tasks.filter((t) => t.status === "failed");
     if (failed.length) {
       const names = failed.map((t) => `"${t.title}"`).join(", ");
-      this.emit({ type: "run.failed", reason: `${names} failed, so the run couldn't finish.` });
+      this.emit({ type: "run.failed", data: { reason: `${names} failed, so the run couldn't finish.` } });
     } else {
-      this.emit({ type: "run.completed", summary: this.options.summarize(this.state) });
+      this.emit({ type: "run.completed", data: { summary: this.options.summarize(this.state) } });
     }
   }
 
@@ -217,10 +225,12 @@ export class WorkflowEngine {
 
   private emit(body: EventBody): void {
     const event = {
-      ...body,
+      id: this.history.length + 1,
       run_id: this.state.id,
-      seq: this.history.length + 1,
       timestamp: this.isoNow(),
+      task_id: body.task_id ?? null,
+      type: body.type,
+      data: body.data,
     } as WorkflowEvent;
     this.state = applyEvent(this.state, event);
     this.history.push(event);

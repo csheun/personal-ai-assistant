@@ -2,6 +2,7 @@
  * App-level UI state as a pure reducer. No fetching, no timers — the hook in
  * `hooks/use-assistant.ts` performs effects and dispatches these actions.
  */
+import type { StreamStatus } from "@/lib/api/client";
 import type {
   ChatMessage,
   Conversation,
@@ -22,6 +23,8 @@ export interface AssistantState {
   messages: Record<ID, ChatMessage[]>;
   messagesStatus: Record<ID, LoadStatus>;
   runs: Record<ID, WorkflowRun>;
+  /** Connection state of each run's live event stream. */
+  streams: Record<ID, StreamStatus>;
   /** Run shown in the workflow panel. */
   selectedRunId: ID | null;
   /** A message that is being sent (shown optimistically). */
@@ -37,6 +40,7 @@ export const initialState: AssistantState = {
   messages: {},
   messagesStatus: {},
   runs: {},
+  streams: {},
   selectedRunId: null,
   pending: null,
   sendError: null,
@@ -57,6 +61,7 @@ export type AssistantAction =
   | { type: "send/errorDismissed" }
   | { type: "run/loaded"; run: WorkflowRun }
   | { type: "run/event"; event: WorkflowEvent }
+  | { type: "run/stream"; runId: ID; status: StreamStatus }
   | { type: "run/selected"; id: ID | null }
   | { type: "stats/loaded"; stats: UsageStats };
 
@@ -118,7 +123,7 @@ export function assistantReducer(state: AssistantState, action: AssistantAction)
     case "run/loaded": {
       // Never let an older snapshot overwrite state built from newer events.
       const current = state.runs[action.run.id];
-      if (current && current.last_event_seq > action.run.last_event_seq) return state;
+      if (current && current.last_event_id > action.run.last_event_id) return state;
       return { ...state, runs: { ...state.runs, [action.run.id]: action.run } };
     }
 
@@ -126,9 +131,12 @@ export function assistantReducer(state: AssistantState, action: AssistantAction)
       const { event } = action;
       const run = state.runs[event.run_id];
       // Ignore events for unknown runs, duplicates and replays already in the snapshot.
-      if (!run || event.seq <= run.last_event_seq) return state;
+      if (!run || event.id <= run.last_event_id) return state;
       return { ...state, runs: { ...state.runs, [event.run_id]: applyEvent(run, event) } };
     }
+
+    case "run/stream":
+      return { ...state, streams: { ...state.streams, [action.runId]: action.status } };
 
     case "run/selected":
       return { ...state, selectedRunId: action.id };

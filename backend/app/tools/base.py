@@ -42,6 +42,9 @@ class Tool(Generic[InputT, OutputT]):
     output_model: type[OutputT]
     handler: Callable[[InputT], Awaitable[OutputT]]
     mocked: bool = False
+    # Acts on the outside world (sends, posts, deletes). Workflows require user approval
+    # before running these, and the free-form agent is never given them.
+    side_effects: bool = False
 
     def to_llm_schema(self) -> dict[str, Any]:
         """OpenAI-style function schema; LangChain converts it for any provider."""
@@ -56,7 +59,7 @@ class Tool(Generic[InputT, OutputT]):
         }
 
 
-ToolErrorCode = Literal["unknown_tool", "invalid_arguments", "execution_failed", "timeout"]
+ToolErrorCode = Literal["unknown_tool", "invalid_arguments", "execution_failed", "timeout", "simulated_failure"]
 
 
 class ToolError(BaseModel):
@@ -90,6 +93,14 @@ class ToolRegistry:
     @property
     def names(self) -> list[str]:
         return list(self._tools)
+
+    def filtered(self, keep: Callable[[Tool[Any, Any]], bool]) -> "ToolRegistry":
+        """A new registry containing only the tools `keep` accepts."""
+        subset = ToolRegistry(timeout_seconds=self._timeout_seconds)
+        for tool in self._tools.values():
+            if keep(tool):
+                subset.register(tool)
+        return subset
 
     def llm_schemas(self) -> list[dict[str, Any]]:
         return [tool.to_llm_schema() for tool in self._tools.values()]

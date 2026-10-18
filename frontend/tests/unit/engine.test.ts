@@ -31,11 +31,11 @@ describe("status transitions", () => {
     expect(engine.events.map((e) => e.type)).toEqual(["run.started", "task.started", "task.completed", "run.completed"]);
   });
 
-  it("numbers events with a monotonic seq", () => {
+  it("numbers events with a monotonic id", () => {
     const engine = makeEngine([{ id: "a" }, { id: "b", deps: ["a"] }]);
     engine.start();
     vi.runAllTimers();
-    expect(engine.events.map((e) => e.seq)).toEqual(engine.events.map((_, i) => i + 1));
+    expect(engine.events.map((e) => e.id)).toEqual(engine.events.map((_, i) => i + 1));
   });
 
   it("refuses to start twice", () => {
@@ -94,7 +94,7 @@ describe("dependency ordering and concurrency", () => {
     engine.start();
     vi.runAllTimers();
 
-    const started = engine.events.filter((e) => e.type === "task.started").map((e) => (e as { task_id: string }).task_id);
+    const started = engine.events.filter((e) => e.type === "task.started").map((e) => e.task_id);
     expect(started).toEqual(["root", "left", "right", "join"]);
     expect(engine.run.status).toBe("completed");
   });
@@ -247,10 +247,10 @@ describe("resuming a stream", () => {
     const snapshot = engine.run;
 
     const received: WorkflowEvent[] = [];
-    engine.subscribe((e) => received.push(e), snapshot.last_event_seq);
+    engine.subscribe((e) => received.push(e), snapshot.last_event_id);
     vi.runAllTimers();
 
-    expect(received[0].seq).toBe(snapshot.last_event_seq + 1);
+    expect(received[0].id).toBe(snapshot.last_event_id + 1);
     expect(received.reduce(applyEvent, snapshot)).toEqual(engine.run);
   });
 });
