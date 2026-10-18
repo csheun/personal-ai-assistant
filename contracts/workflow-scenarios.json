@@ -96,7 +96,8 @@
         "finished_at": null,
         "summary": null,
         "approvals": [],
-        "last_event_id": 0
+        "last_event_id": 0,
+        "planning": null
       },
       "events": [
         {
@@ -255,7 +256,7 @@
                 "sources": [
                   {
                     "tool_name": "get_weather",
-                    "title": null,
+                    "title": "Check Singapore weather",
                     "output": {
                       "city": "Singapore",
                       "temperature": 23.0,
@@ -269,7 +270,7 @@
                   },
                   {
                     "tool_name": "calendar_list_events",
-                    "title": null,
+                    "title": "Read today's calendar",
                     "output": {
                       "date": "today",
                       "events": [
@@ -291,7 +292,7 @@
                   },
                   {
                     "tool_name": "gmail_search",
-                    "title": null,
+                    "title": "Scan unread email",
                     "output": {
                       "query": "is:unread newer_than:1d",
                       "messages": [
@@ -560,7 +561,7 @@
                 "sources": [
                   {
                     "tool_name": "get_weather",
-                    "title": null,
+                    "title": "Check Singapore weather",
                     "output": {
                       "city": "Singapore",
                       "temperature": 23.0,
@@ -574,7 +575,7 @@
                   },
                   {
                     "tool_name": "calendar_list_events",
-                    "title": null,
+                    "title": "Read today's calendar",
                     "output": {
                       "date": "today",
                       "events": [
@@ -596,7 +597,7 @@
                   },
                   {
                     "tool_name": "gmail_search",
-                    "title": null,
+                    "title": "Scan unread email",
                     "output": {
                       "query": "is:unread newer_than:1d",
                       "messages": [
@@ -680,7 +681,8 @@
             "resolved_at": "2026-01-01T08:00:02.100000Z"
           }
         ],
-        "last_event_id": 14
+        "last_event_id": 14,
+        "planning": null
       }
     },
     {
@@ -779,7 +781,8 @@
         "finished_at": null,
         "summary": null,
         "approvals": [],
-        "last_event_id": 0
+        "last_event_id": 0,
+        "planning": null
       },
       "events": [
         {
@@ -938,7 +941,7 @@
                 "sources": [
                   {
                     "tool_name": "get_weather",
-                    "title": null,
+                    "title": "Check Singapore weather",
                     "output": {
                       "city": "Singapore",
                       "temperature": 23.0,
@@ -952,7 +955,7 @@
                   },
                   {
                     "tool_name": "calendar_list_events",
-                    "title": null,
+                    "title": "Read today's calendar",
                     "output": {
                       "date": "today",
                       "events": [
@@ -974,7 +977,7 @@
                   },
                   {
                     "tool_name": "gmail_search",
-                    "title": null,
+                    "title": "Scan unread email",
                     "output": {
                       "query": "is:unread newer_than:1d",
                       "messages": [
@@ -1219,7 +1222,7 @@
                 "sources": [
                   {
                     "tool_name": "get_weather",
-                    "title": null,
+                    "title": "Check Singapore weather",
                     "output": {
                       "city": "Singapore",
                       "temperature": 23.0,
@@ -1233,7 +1236,7 @@
                   },
                   {
                     "tool_name": "calendar_list_events",
-                    "title": null,
+                    "title": "Read today's calendar",
                     "output": {
                       "date": "today",
                       "events": [
@@ -1255,7 +1258,7 @@
                   },
                   {
                     "tool_name": "gmail_search",
-                    "title": null,
+                    "title": "Scan unread email",
                     "output": {
                       "query": "is:unread newer_than:1d",
                       "messages": [
@@ -1324,7 +1327,8 @@
             "resolved_at": "2026-01-01T08:00:02.100000Z"
           }
         ],
-        "last_event_id": 13
+        "last_event_id": 13,
+        "planning": null
       }
     },
     {
@@ -1423,7 +1427,8 @@
         "finished_at": null,
         "summary": null,
         "approvals": [],
-        "last_event_id": 0
+        "last_event_id": 0,
+        "planning": null
       },
       "events": [
         {
@@ -1601,7 +1606,8 @@
         "finished_at": "2026-01-01T08:00:01.100000Z",
         "summary": null,
         "approvals": [],
-        "last_event_id": 10
+        "last_event_id": 10,
+        "planning": null
       }
     },
     {
@@ -1650,7 +1656,8 @@
         "finished_at": null,
         "summary": null,
         "approvals": [],
-        "last_event_id": 0
+        "last_event_id": 0,
+        "planning": null
       },
       "events": [
         {
@@ -1774,7 +1781,8 @@
         "finished_at": "2026-01-01T08:00:00.800000Z",
         "summary": null,
         "approvals": [],
-        "last_event_id": 5
+        "last_event_id": 5,
+        "planning": null
       }
     }
   ]

@@ -15,6 +15,8 @@ from app.tools import ToolRegistry
 from app.workflows.errors import NotFound
 from app.workflows.graph import parallel_saving_ms
 from app.workflows.models import (
+    Capabilities,
+    ToolInfo,
     ApprovalDecision,
     ApprovalRequest,
     ChatMessage,
@@ -25,7 +27,7 @@ from app.workflows.models import (
     WorkflowEvent,
     WorkflowRun,
 )
-from app.workflows.planner import MockPlanner, Plan
+from app.workflows.plans import Plan, Planner
 from app.workflows.runner import WorkflowRunner, utc_now
 
 
@@ -35,11 +37,19 @@ def new_id(prefix: str) -> str:
 
 class WorkflowService:
     def __init__(
-        self, tools: ToolRegistry, planner: MockPlanner, *, clock: Callable[[], datetime] = utc_now
+        self,
+        tools: ToolRegistry,
+        planner: Planner,
+        *,
+        clock: Callable[[], datetime] = utc_now,
+        mode: str = "mock",
+        llm_model: str | None = None,
     ) -> None:
         self._tools = tools
         self._planner = planner
         self._clock = clock
+        self._mode = mode
+        self._llm_model = llm_model
         self._conversations: dict[str, Conversation] = {}
         self._messages: dict[str, list[ChatMessage]] = {}
         self._runners: dict[str, WorkflowRunner] = {}
@@ -54,12 +64,17 @@ class WorkflowService:
             raise NotFound("Conversation not found.")
         return list(self._messages[conversation_id])
 
-    def send_message(self, request: SendMessageRequest) -> SendMessageResponse:
-        """Plans a reply. A plan becomes a run in status "planned"; nothing executes until start()."""
+    async def send_message(self, request: SendMessageRequest) -> SendMessageResponse:
+        """Plans a reply. A plan becomes a run in status "planned"; nothing executes until start().
+
+        May raise AssistantUnavailable / LLMUnavailable (503) or PlanningFailed (502). Nothing is
+        stored unless planning succeeds.
+        """
         if request.conversation_id and request.conversation_id not in self._conversations:
             raise NotFound("Conversation not found.")
 
-        outcome = self._planner.plan(request.message)  # may raise AssistantUnavailable
+        # "Today" in the server's time zone, for resolving "tomorrow" etc.
+        outcome = await self._planner.plan(request.message, today=self._clock().astimezone().date())
         now = self._clock()
 
         if request.conversation_id:
@@ -78,7 +93,12 @@ class WorkflowService:
         run = None
         if isinstance(outcome, Plan):
             run = WorkflowRun(
-                id=new_id("run"), conversation_id=conversation.id, goal=outcome.goal, tasks=outcome.tasks, created_at=now
+                id=new_id("run"),
+                conversation_id=conversation.id,
+                goal=outcome.goal,
+                tasks=outcome.tasks,
+                created_at=now,
+                planning=outcome.planning,
             )
             self._runners[run.id] = WorkflowRunner(
                 run, self._tools, fail_task_ids=outcome.fail_task_ids, clock=self._clock, new_id=new_id
@@ -94,6 +114,7 @@ class WorkflowService:
             content=outcome.reply,
             created_at=now,
             run_id=run.id if run else None,
+            planning=outcome.planning,
         )
         self._conversations[conversation.id] = conversation
         self._messages.setdefault(conversation.id, []).extend([user_message, assistant_message])
@@ -137,6 +158,14 @@ class WorkflowService:
             approvals_requested=len(approvals),
             approvals_approved=sum(a.status == "approved" for a in approvals),
             time_saved_by_parallelism_ms=sum(parallel_saving_ms(r.tasks) for r in runs if r.finished_at),
+        )
+
+    def capabilities(self) -> Capabilities:
+        tools = [self._tools.get(name) for name in self._tools.names]
+        return Capabilities(
+            mode=self._mode,  # type: ignore[arg-type]
+            llm_model=self._llm_model,
+            tools=[ToolInfo(name=t.name, description=t.description, risk=t.risk, mocked=t.mocked) for t in tools if t],
         )
 
     async def shutdown(self) -> None:

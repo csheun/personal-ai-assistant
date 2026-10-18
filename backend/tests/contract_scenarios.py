@@ -38,7 +38,7 @@ class StepClock:
 
 async def _record(name: str, message: str, action: str) -> dict[str, Any]:
     tools = build_default_registry(mock_latency_scale=0)  # instant tools: order is deterministic
-    plan = MockPlanner(tools).plan(message)
+    plan = MockPlanner(tools).build(message)
     assert isinstance(plan, Plan)
     clock, ids = StepClock(), itertools.count(1)
     run = WorkflowRun(id=f"run_{name}", conversation_id="conv_1", goal=plan.goal, tasks=plan.tasks, created_at=clock())

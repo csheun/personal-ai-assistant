@@ -12,6 +12,29 @@ export type ID = string;
 export type ISODateTime = string;
 
 // ---------------------------------------------------------------------------
+// Planning metadata
+// ---------------------------------------------------------------------------
+
+/** Cost of one LLM call. Token counts are null when the provider doesn't report them. */
+export interface LLMUsage {
+  purpose: string;
+  provider: string;
+  model: string;
+  duration_ms: number;
+  input_tokens: number | null;
+  output_tokens: number | null;
+}
+
+/** How a reply or plan was produced. */
+export interface PlanningInfo {
+  planner: "mock" | "llm";
+  /** LLM attempts (1 draft + repairs); 0 for the mock planner. */
+  attempts: number;
+  duration_ms: number;
+  usage: LLMUsage[];
+}
+
+// ---------------------------------------------------------------------------
 // Conversations & messages
 // ---------------------------------------------------------------------------
 
@@ -33,7 +56,9 @@ export interface ChatMessage {
   content: string;
   created_at: ISODateTime;
   /** Set on assistant messages that proposed a workflow. */
-  run_id?: ID;
+  run_id?: ID | null;
+  /** Set on assistant messages: how the reply (or its plan) was produced. */
+  planning?: PlanningInfo | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -49,7 +74,15 @@ export type ToolName =
   | "summarize"
   | "telegram_send_message";
 
-export type ToolErrorCode = "unknown_tool" | "invalid_arguments" | "execution_failed" | "timeout" | "simulated_failure";
+export type ToolErrorCode =
+  | "unknown_tool"
+  | "invalid_arguments"
+  | "execution_failed"
+  | "timeout"
+  | "simulated_failure"
+  | "not_found"
+  | "provider_error"
+  | "delivery_unknown";
 
 export interface ToolError {
   code: ToolErrorCode;
@@ -127,6 +160,7 @@ export interface WorkflowRun {
   approvals: ApprovalRequest[];
   /** Id of the last event reflected in this snapshot. Resume the event stream after it. */
   last_event_id: number;
+  planning?: PlanningInfo | null;
 }
 
 // ---------------------------------------------------------------------------

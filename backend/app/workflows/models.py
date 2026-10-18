@@ -11,6 +11,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.llm.client import LLMUsage
 from app.tools import ToolResult
 
 ToolName = Literal[
@@ -36,6 +37,18 @@ class Model(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+# --- Planning metadata -------------------------------------------------------------
+
+
+class PlanningInfo(Model):
+    """How a reply or plan was produced: by which planner, in how many LLM attempts, at what cost."""
+
+    planner: Literal["mock", "llm"]
+    attempts: int
+    duration_ms: int
+    usage: list[LLMUsage] = Field(default_factory=list)
+
+
 # --- Conversations ---------------------------------------------------------------
 
 
@@ -54,6 +67,8 @@ class ChatMessage(Model):
     content: str
     created_at: datetime
     run_id: str | None = None
+    # Set on assistant messages: how the reply (or the plan it introduces) was produced.
+    planning: PlanningInfo | None = None
 
 
 # --- Workflows -------------------------------------------------------------------
@@ -103,6 +118,7 @@ class WorkflowRun(Model):
     summary: str | None = None
     approvals: list[ApprovalRequest] = Field(default_factory=list)
     last_event_id: int = 0
+    planning: PlanningInfo | None = None
 
 
 # --- Events: one envelope, typed `data` per event type ------------------------------
@@ -235,6 +251,21 @@ class SendMessageResponse(Model):
 class ApprovalDecisionRequest(Model):
     approval_id: str
     decision: ApprovalDecision
+
+
+class ToolInfo(Model):
+    name: str
+    description: str
+    risk: Literal["read", "external_write"]
+    mocked: bool
+
+
+class Capabilities(Model):
+    """GET /api/capabilities: what this backend can do right now (no secrets)."""
+
+    mode: Literal["mock", "live"]
+    llm_model: str | None
+    tools: list[ToolInfo]
 
 
 class UsageStats(Model):

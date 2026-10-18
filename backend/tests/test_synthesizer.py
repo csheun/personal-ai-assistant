@@ -23,7 +23,7 @@ async def test_llm_summary_cites_only_real_sources() -> None:
 
     output = await tool.handler(SummarizeInput(instruction="Summarize both.", sources=SOURCES))
 
-    assert output.text == "Sunny. Model A shipped [1]. [7]"
+    assert output.text == "Sunny. Model A shipped [1]."  # the invented [7] is removed from the text too
     assert [(c.ref, c.url) for c in output.sources] == [(1, "https://news.example/a")]  # 7 was invented; 1 deduped
     assert output.mocked is False and output.usage.purpose == "synthesize"
 
@@ -42,3 +42,9 @@ async def test_fetched_content_is_fenced_as_untrusted_data() -> None:
 async def test_mock_summary_keeps_the_same_contract() -> None:
     output = await summarize_tool.handler(SummarizeInput(sources=SOURCES[:1] and [{"tool_name": "web_search", "output": {"query": "x", "results": [1]}}]))
     assert output.mocked is True and output.sources == [] and output.usage is None
+
+
+async def test_citation_markers_without_any_web_sources_are_removed() -> None:
+    llm, _ = fake_llm(structured("_SynthesisDraft", {"text": "No rain is expected [1].", "cited_refs": [1]}))
+    output = await make_llm_summarize_tool(llm).handler(SummarizeInput(sources=SOURCES[:1]))
+    assert output.text == "No rain is expected." and output.sources == []

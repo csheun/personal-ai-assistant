@@ -17,7 +17,6 @@ existing WorkflowRunner, so there is one executor and one source of workflow sta
 
 import json
 import operator
-from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Annotated, Any, Literal, TypedDict
 
@@ -26,7 +25,9 @@ from langgraph.graph import END, START, StateGraph
 
 from app.llm.client import LLMClient, LLMOutputError, LLMUsage
 from app.tools import ToolRegistry
+from app.workflows.models import PlanningInfo
 from app.workflows.plan_schema import PlannerOutput
+from app.workflows.plans import DirectReply, Plan
 from app.workflows.validation import SYNTHESIS_TOOL, PlanLimits, ValidAnswer, ValidPlan, validate_plan
 
 
@@ -37,16 +38,6 @@ class PlanningFailed(Exception):
         super().__init__("The assistant couldn't build a valid plan for this request. Try rephrasing it.")
         self.errors = errors
         self.usage = usage
-
-
-@dataclass(frozen=True)
-class PlanningReport:
-    attempts: int
-    usage: list[LLMUsage]
-
-    @property
-    def duration_ms(self) -> int:
-        return sum(u.duration_ms for u in self.usage)
 
 
 class _State(TypedDict):
@@ -68,7 +59,7 @@ class LLMPlanner:
         self._limits = limits
         self._graph = self._build_graph()
 
-    async def plan(self, message: str, *, today: date) -> tuple[ValidPlan | ValidAnswer, PlanningReport]:
+    async def plan(self, message: str, *, today: date) -> Plan | DirectReply:
         """Raises PlanningFailed (invalid after all attempts) or LLMUnavailable (provider problem)."""
         initial: _State = {
             "messages": [SystemMessage(self._system_prompt(today)), HumanMessage(message)],
@@ -79,10 +70,18 @@ class LLMPlanner:
             "usage": [],
         }
         final = await self._graph.ainvoke(initial)
-        report = PlanningReport(attempts=final["attempts"], usage=final["usage"])
         if final["result"] is None:
             raise PlanningFailed(final["errors"], final["usage"])
-        return final["result"], report
+        info = PlanningInfo(
+            planner="llm",
+            attempts=final["attempts"],
+            duration_ms=sum(u.duration_ms for u in final["usage"]),
+            usage=final["usage"],
+        )
+        result: ValidPlan | ValidAnswer = final["result"]
+        if isinstance(result, ValidAnswer):
+            return DirectReply(result.answer, info)
+        return Plan(reply=result.reply, goal=result.goal, tasks=result.tasks, planning=info)
 
     # --- graph ---------------------------------------------------------------------
 

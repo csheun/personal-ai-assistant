@@ -14,7 +14,7 @@ FAST = 0.01
 
 def make_runner(message: str = BRIEFING, scale: float = FAST, run_id: str = "run_1") -> WorkflowRunner:
     registry = build_default_registry(mock_latency_scale=scale)
-    plan = MockPlanner(registry).plan(message)
+    plan = MockPlanner(registry).build(message)
     assert isinstance(plan, Plan)
     run = WorkflowRun(
         id=run_id, conversation_id="conv_1", goal=plan.goal, tasks=plan.tasks, created_at=datetime.now(UTC)

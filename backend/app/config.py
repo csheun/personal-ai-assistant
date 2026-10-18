@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     llm_structured_output: StructuredOutputMethod | None = None
     # Planner: total LLM attempts per request (1 draft + repairs after validation errors).
     planner_max_attempts: int = Field(default=2, ge=1, le=4)
+    # Validation limits for LLM-generated plans.
+    planner_max_tasks: int = Field(default=8, ge=2, le=20)
+    planner_max_depth: int = Field(default=4, ge=2, le=8)
 
     tool_timeout_seconds: float = Field(default=10.0, gt=0)
 
