@@ -6,6 +6,7 @@ logs, reprs and tracebacks.
 """
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr
@@ -13,9 +14,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LLMProvider = Literal["groq", "openai", "anthropic"]
 
+# Anchor to backend/.env so the app finds it regardless of the directory it is started from.
+ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "Personal AI Assistant"
     log_level: str = "INFO"
