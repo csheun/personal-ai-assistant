@@ -412,7 +412,7 @@
           "task_id": null,
           "type": "run.completed",
           "data": {
-            "summary": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.\n\nYou approved the Telegram message. In mock mode nothing was actually sent."
+            "summary": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.\n\nYou approved the Telegram message. Telegram is simulated here, so nothing was actually sent."
           }
         }
       ],
@@ -664,7 +664,7 @@
         "created_at": "2026-01-01T08:00:00.100000Z",
         "started_at": "2026-01-01T08:00:00.200000Z",
         "finished_at": "2026-01-01T08:00:02.700000Z",
-        "summary": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.\n\nYou approved the Telegram message. In mock mode nothing was actually sent.",
+        "summary": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.\n\nYou approved the Telegram message. Telegram is simulated here, so nothing was actually sent.",
         "approvals": [
           {
             "id": "apr_1",

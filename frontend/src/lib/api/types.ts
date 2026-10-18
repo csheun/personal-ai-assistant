@@ -246,6 +246,33 @@ export interface UsageStats {
   approvals_approved: number;
   /** Sum of task durations minus wall-clock time: what parallel execution saved. */
   time_saved_by_parallelism_ms: number;
+  /** LLM usage across planning and summaries (0 in mock mode). */
+  llm_calls: number;
+  llm_input_tokens: number;
+  llm_output_tokens: number;
+}
+
+/** GET /api/capabilities: what the backend can do right now. */
+export interface ToolInfo {
+  name: ToolName;
+  description: string;
+  risk: "read" | "external_write";
+  /** True when the tool returns simulated data. */
+  mocked: boolean;
+}
+
+export interface Capabilities {
+  mode: "mock" | "live";
+  /** e.g. "groq:openai/gpt-oss-120b"; null in mock mode. */
+  llm_model: string | null;
+  tools: ToolInfo[];
+}
+
+/** A web source cited in a summary as [ref]. */
+export interface Citation {
+  ref: number;
+  title: string;
+  url: string;
 }
 
 /**

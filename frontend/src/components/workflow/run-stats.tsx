@@ -26,6 +26,13 @@ export function RunStats({ run, elapsed, stats }: { run: WorkflowRun | null; ela
           <Stat label="Runs" value={`${stats.completed_runs} of ${stats.total_runs} done`} />
           <Stat label="Tool calls" value={String(stats.tool_calls)} />
           <Stat label="Approved" value={`${stats.approvals_approved} of ${stats.approvals_requested}`} />
+          {stats.llm_calls > 0 && (
+            <>
+              <Stat label="LLM calls" value={String(stats.llm_calls)} />
+              <Stat label="Tokens in" value={stats.llm_input_tokens.toLocaleString("en-US")} />
+              <Stat label="Tokens out" value={stats.llm_output_tokens.toLocaleString("en-US")} />
+            </>
+          )}
         </dl>
       )}
     </div>

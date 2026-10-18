@@ -277,3 +277,7 @@ class UsageStats(Model):
     approvals_requested: int
     approvals_approved: int
     time_saved_by_parallelism_ms: int
+    # LLM usage across planning and summaries (0 in mock mode).
+    llm_calls: int = 0
+    llm_input_tokens: int = 0
+    llm_output_tokens: int = 0

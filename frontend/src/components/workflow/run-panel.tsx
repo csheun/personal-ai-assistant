@@ -9,16 +9,17 @@ import { RUN_STATUS, StatusPill, TASK_STATUS } from "@/components/ui/status";
 import { useNow } from "@/hooks/use-now";
 import type { WorkflowRun } from "@/lib/api/types";
 import { formatDuration } from "@/lib/format";
-import { elapsedMs, failureReason, pendingApproval, progress } from "@/lib/workflow/metrics";
+import { describePlanning, elapsedMs, failureReason, pendingApproval, progress, summarySources } from "@/lib/workflow/metrics";
 import { ApprovalCard } from "./approval-card";
 import { RunGraph } from "./run-graph";
 import { RunStats } from "./run-stats";
+import { SourceList } from "./source-list";
 import { TaskResults } from "./task-results";
 
 const LIVE = new Set(["running", "waiting_for_approval"]);
 
 export function RunPanel() {
-  const { state, startRun, cancelRun, resolveApproval, actionError, dismissActionError } = useAssistant();
+  const { state, capabilities, startRun, cancelRun, resolveApproval, actionError, dismissActionError } = useAssistant();
   const run = state.selectedRunId ? state.runs[state.selectedRunId] : null;
   const now = useNow(!!run && LIVE.has(run.status));
   const elapsed = run ? elapsedMs(run, now) : null;
@@ -46,6 +47,7 @@ export function RunPanel() {
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-[17px] font-semibold leading-snug tracking-tight">{run.goal}</h2>
         </div>
+        {describePlanning(run.planning) && <p className="text-[12px] text-faint">{describePlanning(run.planning)}</p>}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <StatusPill meta={RUN_STATUS[run.status]} />
           <span className="tabular text-sm text-muted">
@@ -89,6 +91,7 @@ export function RunPanel() {
             key={approval.id}
             approval={approval}
             onResolve={(approvalId, decision) => resolveApproval(run.id, approvalId, decision)}
+            simulated={capabilities?.tools.find((t) => t.name === approval.tool_name)?.mocked ?? true}
           />
         )}
 
@@ -98,6 +101,7 @@ export function RunPanel() {
               Summary
             </h3>
             <p className="whitespace-pre-wrap text-sm">{run.summary}</p>
+            <SourceList sources={summarySources(run)} />
           </section>
         )}
         {failure && (

@@ -221,3 +221,25 @@ def test_mock_mode_still_works_by_default() -> None:
         assert client.get("/api/capabilities").json()["mode"] == "mock"
         body = chat(client, "Give me a morning briefing and send it to Telegram")
         assert body["run"]["planning"]["planner"] == "mock"
+
+
+def test_stats_include_llm_usage_from_planning_and_summaries() -> None:
+    client, _, _ = live_client(
+        plan(WEATHER, task("t2", "summarize", {}, ["t1"])),
+        synthesis("Storms."),
+    )
+    with client:
+        run_to_end(client, chat(client, "Weather?")["run"]["id"])
+        stats = client.get("/api/stats").json()
+    # Planning call + summary call, 100 in / 20 out each (from the fake).
+    assert (stats["llm_calls"], stats["llm_input_tokens"], stats["llm_output_tokens"]) == (2, 200, 40)
+
+
+def test_summary_mentions_simulated_telegram_honestly() -> None:
+    client, _, _ = live_client(
+        plan(SEARCH, task("t3", "summarize", {}, ["t2"]), task("t4", "telegram_send_message", {}, ["t3"])),
+        synthesis("News."),
+    )
+    with client:
+        final = run_to_end(client, chat(client, "News to Telegram")["run"]["id"], approve=True)
+    assert "Telegram is simulated here" in final["summary"]

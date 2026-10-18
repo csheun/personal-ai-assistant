@@ -9,9 +9,12 @@ import type { ApprovalDecision, ApprovalRequest } from "@/lib/api/types";
 export function ApprovalCard({
   approval,
   onResolve,
+  simulated,
 }: {
   approval: ApprovalRequest;
   onResolve: (id: string, decision: ApprovalDecision) => void;
+  /** True when the action's tool is simulated, so approving doesn't really send anything. */
+  simulated: boolean;
 }) {
   const [submitted, setSubmitted] = useState<ApprovalDecision | null>(null);
 
@@ -50,7 +53,9 @@ export function ApprovalCard({
           <X className="size-4" aria-hidden />
           {submitted === "reject" ? "Rejecting…" : "Reject"}
         </Button>
-        <span className="text-[12px] text-decide-ink/80">Mock mode: approving won&apos;t send a real message.</span>
+        <span className="text-[12px] text-decide-ink/80">
+          {simulated ? "Simulated: approving won't send a real message." : "Approving sends this message now. It can't be undone."}
+        </span>
       </div>
     </section>
   );

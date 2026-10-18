@@ -1,4 +1,4 @@
-import type { ApprovalRequest, ID, WorkflowRun, WorkflowTask } from "@/lib/api/types";
+import type { ApprovalRequest, Citation, ID, PlanningInfo, WorkflowRun, WorkflowTask } from "@/lib/api/types";
 import { isTerminal } from "./graph";
 
 export function progress(run: WorkflowRun): { done: number; total: number } {
@@ -85,4 +85,26 @@ export function parallelSavingMs(tasks: WorkflowTask[]): number {
   const criticalPath = Math.max(0, ...tasks.map(finish));
   const totalWork = tasks.reduce((sum, t) => sum + (t.duration_ms ?? 0), 0);
   return totalWork - criticalPath;
+}
+
+/** Web sources cited by the run's summary step (only http(s) links). */
+export function summarySources(run: WorkflowRun): Citation[] {
+  const summary = run.tasks.find((t) => t.tool_name === "summarize" && t.result?.ok);
+  const sources = (summary?.result?.output as { sources?: unknown } | null | undefined)?.sources;
+  if (!Array.isArray(sources)) return [];
+  return sources.filter(
+    (s): s is Citation =>
+      !!s && typeof s.url === "string" && /^https?:\/\//.test(s.url) && typeof s.ref === "number",
+  );
+}
+
+/** "Planned by groq:openai/gpt-oss-120b in 2.3s, 2,566 tokens" or the demo planner. */
+export function describePlanning(planning: PlanningInfo | null | undefined): string | null {
+  if (!planning) return null;
+  if (planning.planner === "mock") return "Planned by the demo planner (keyword rules)";
+  const model = planning.usage[0] ? `${planning.usage[0].provider}:${planning.usage[0].model}` : "the LLM";
+  const tokens = planning.usage.reduce((sum, u) => sum + (u.input_tokens ?? 0) + (u.output_tokens ?? 0), 0);
+  const seconds = (planning.duration_ms / 1000).toFixed(1);
+  const attempts = planning.attempts > 1 ? `, ${planning.attempts} attempts` : "";
+  return `Planned by ${model} in ${seconds}s${tokens ? `, ${tokens.toLocaleString("en-US")} tokens` : ""}${attempts}`;
 }

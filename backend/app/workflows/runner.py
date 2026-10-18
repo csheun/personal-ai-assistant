@@ -76,6 +76,7 @@ class WorkflowRunner:
         self._new_id = new_id
         self.log = EventLog()
         self._jobs: dict[str, asyncio.Task[None]] = {}
+        self._spawned: set[str] = set()
         self._done = asyncio.Event()
 
     @property
@@ -150,6 +151,11 @@ class WorkflowRunner:
             self._finish()
 
     def _spawn(self, task: WorkflowTask) -> None:
+        # At most one execution per task, whichever path asks (scheduling or an approval).
+        if task.id in self._spawned:
+            logger.warning("Ignoring a second start of %s/%s", self._run.id, task.id)
+            return
+        self._spawned.add(task.id)
         self._emit(TaskStarted, task_id=task.id)
         self._jobs[task.id] = asyncio.create_task(self._execute(task.id), name=f"{self._run.id}:{task.id}")
 
@@ -258,6 +264,9 @@ def _final_summary(run: WorkflowRun) -> str:
     telegram = next((t for t in run.tasks if t.tool_name == "telegram_send_message"), None)
     if telegram is None:
         return text
-    if telegram.status == "completed":
-        return f"{text}\n\nYou approved the Telegram message. In mock mode nothing was actually sent."
-    return f"{text}\n\nI didn't send anything to Telegram because you rejected the message."
+    if telegram.status != "completed" or telegram.result is None:
+        return f"{text}\n\nI didn't send anything to Telegram because you rejected the message."
+    sent = telegram.result.output or {}
+    if sent.get("delivered"):
+        return f"{text}\n\nSent to Telegram ({sent.get('chat', 'your chat')})."
+    return f"{text}\n\nYou approved the Telegram message. Telegram is simulated here, so nothing was actually sent."

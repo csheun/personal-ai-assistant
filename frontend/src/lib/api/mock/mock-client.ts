@@ -8,6 +8,7 @@ import {
   ApiError,
   type ApprovalDecision,
   type ApprovalRequest,
+  type Capabilities,
   type ChatMessage,
   type Conversation,
   type ID,
@@ -34,6 +35,22 @@ export interface MockClientOptions {
 }
 
 export const MAX_MESSAGE_LENGTH = 4000;
+
+const MOCK_CAPABILITIES: Capabilities = {
+  mode: "mock",
+  llm_model: null,
+  tools: (
+    [
+      ["get_weather", "read"],
+      ["calendar_list_events", "read"],
+      ["gmail_search", "read"],
+      ["web_search", "read"],
+      ["document_search", "read"],
+      ["summarize", "read"],
+      ["telegram_send_message", "external_write"],
+    ] as const
+  ).map(([name, risk]) => ({ name, description: "", risk, mocked: true })),
+};
 
 export class MockWorkflowClient implements WorkflowClient {
   private readonly scheduler: Scheduler;
@@ -103,6 +120,10 @@ export class MockWorkflowClient implements WorkflowClient {
 
   resolveApproval(runId: ID, approvalId: ID, decision: ApprovalDecision): Promise<ApprovalRequest> {
     return this.respond(() => this.engine(runId).resolveApproval(approvalId, decision));
+  }
+
+  getCapabilities(): Promise<Capabilities> {
+    return this.respond(() => MOCK_CAPABILITIES);
   }
 
   getStats(): Promise<UsageStats> {
@@ -278,6 +299,9 @@ export function computeStats(runs: WorkflowRun[]): UsageStats {
     approvals_requested: approvals.length,
     approvals_approved: approvals.filter((a) => a.status === "approved").length,
     time_saved_by_parallelism_ms: saved,
+    llm_calls: 0,
+    llm_input_tokens: 0,
+    llm_output_tokens: 0,
   };
 }
 

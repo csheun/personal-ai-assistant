@@ -118,3 +118,13 @@ async def test_events_replay_to_the_same_snapshot() -> None:
         replayed = apply_event(replayed, event)
     assert replayed == final
     assert final.last_event_id == len(events)
+
+
+async def test_a_task_is_never_started_twice() -> None:
+    runner = make_runner()
+    runner.start()
+    await wait_for(lambda: runner.run.status == "waiting_for_approval")
+    runner._spawn(runner._task("t1"))  # a buggy second start of a finished task
+    started = [e for e in runner.log.events if e.type == "task.started" and e.task_id == "t1"]
+    assert len(started) == 1
+    runner.cancel()

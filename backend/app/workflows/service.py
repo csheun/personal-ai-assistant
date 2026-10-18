@@ -11,6 +11,7 @@ import uuid
 from collections.abc import AsyncIterator, Callable
 from datetime import datetime
 
+from app.llm.client import LLMUsage
 from app.tools import ToolRegistry
 from app.workflows.errors import NotFound
 from app.workflows.graph import parallel_saving_ms
@@ -158,7 +159,22 @@ class WorkflowService:
             approvals_requested=len(approvals),
             approvals_approved=sum(a.status == "approved" for a in approvals),
             time_saved_by_parallelism_ms=sum(parallel_saving_ms(r.tasks) for r in runs if r.finished_at),
+            **self._llm_totals(),
         )
+
+    def _llm_totals(self) -> dict[str, int]:
+        """Every recorded LLM call: planning (on assistant messages) and summaries (in task results)."""
+        usages = [u for msgs in self._messages.values() for m in msgs if m.planning for u in m.planning.usage]
+        for runner in self._runners.values():
+            for task in runner.run.tasks:
+                usage = ((task.result.output or {}) if task.result else {}).get("usage")
+                if isinstance(usage, dict):
+                    usages.append(LLMUsage.model_validate(usage))
+        return {
+            "llm_calls": len(usages),
+            "llm_input_tokens": sum(u.input_tokens or 0 for u in usages),
+            "llm_output_tokens": sum(u.output_tokens or 0 for u in usages),
+        }
 
     def capabilities(self) -> Capabilities:
         tools = [self._tools.get(name) for name in self._tools.names]
