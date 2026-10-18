@@ -13,7 +13,7 @@ BRIEFING = "Give me a morning briefing and send it to Telegram"
 
 @pytest.fixture
 def client() -> Iterator[TestClient]:
-    settings = Settings(mock_latency_scale=0.01, sse_heartbeat_seconds=0.05, llm_api_key=None)
+    settings = Settings(mock_latency_scale=0.01, sse_heartbeat_seconds=0.05)
     with TestClient(create_app(settings)) as c:
         yield c
 

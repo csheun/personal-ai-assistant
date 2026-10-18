@@ -105,7 +105,7 @@ class MockPlanner:
                     f"t{len(tasks) + 1}",
                     "telegram_send_message",
                     "Send the summary to Telegram",
-                    {"chat": "Me (Saved Messages)"},
+                    {},
                     depends_on=[summary_id],
                 )
             )

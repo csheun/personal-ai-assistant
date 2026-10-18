@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.tools import ToolError, ToolRegistry, ToolResult
+from app.tools.base import ActionPreview
 from app.workflows.bindings import resolve_arguments
 from app.workflows.errors import NotFound, WorkflowConflict
 from app.workflows.events import EventLog
@@ -153,16 +154,20 @@ class WorkflowRunner:
         self._jobs[task.id] = asyncio.create_task(self._execute(task.id), name=f"{self._run.id}:{task.id}")
 
     def _request_approval(self, task: WorkflowTask) -> None:
+        # The tool describes its own action from validated input, so the card shows exactly what will run.
+        tool = self._tools.get(task.tool_name)
         arguments = resolve_arguments(task, self._upstream(task))
+        if tool is None or tool.describe_action is None:
+            preview = ActionPreview(action=f"Run {task.title}", destination=task.tool_name, body=str(arguments))
+        else:
+            preview = tool.describe_action(tool.input_model.model_validate(arguments))
         approval = ApprovalRequest(
             id=self._new_id("apr"),
             run_id=self._run.id,
             task_id=task.id,
             tool_name=task.tool_name,
-            action=f"Send a Telegram message to {arguments.get('chat')}",
-            preview=ApprovalPreview(
-                destination=f"Telegram · {arguments.get('chat')}", body=str(arguments.get("text", ""))
-            ),
+            action=preview.action,
+            preview=ApprovalPreview(destination=preview.destination, body=preview.body),
             status="pending",
             created_at=self._clock(),
         )

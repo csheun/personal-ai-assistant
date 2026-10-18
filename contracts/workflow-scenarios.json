@@ -78,9 +78,7 @@
             "id": "t5",
             "title": "Send the summary to Telegram",
             "tool_name": "telegram_send_message",
-            "arguments": {
-              "chat": "Me (Saved Messages)"
-            },
+            "arguments": {},
             "depends_on": [
               "t4"
             ],
@@ -253,9 +251,11 @@
             "result": {
               "tool_name": "summarize",
               "arguments": {
+                "instruction": "Summarize the results for the user.",
                 "sources": [
                   {
                     "tool_name": "get_weather",
+                    "title": null,
                     "output": {
                       "city": "Singapore",
                       "temperature": 23.0,
@@ -269,6 +269,7 @@
                   },
                   {
                     "tool_name": "calendar_list_events",
+                    "title": null,
                     "output": {
                       "date": "today",
                       "events": [
@@ -290,6 +291,7 @@
                   },
                   {
                     "tool_name": "gmail_search",
+                    "title": null,
                     "output": {
                       "query": "is:unread newer_than:1d",
                       "messages": [
@@ -312,6 +314,8 @@
               "ok": true,
               "output": {
                 "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.",
+                "sources": [],
+                "usage": null,
                 "mocked": true
               },
               "error": null,
@@ -384,7 +388,6 @@
             "result": {
               "tool_name": "telegram_send_message",
               "arguments": {
-                "chat": "Me (Saved Messages)",
                 "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya."
               },
               "ok": true,
@@ -553,9 +556,11 @@
             "result": {
               "tool_name": "summarize",
               "arguments": {
+                "instruction": "Summarize the results for the user.",
                 "sources": [
                   {
                     "tool_name": "get_weather",
+                    "title": null,
                     "output": {
                       "city": "Singapore",
                       "temperature": 23.0,
@@ -569,6 +574,7 @@
                   },
                   {
                     "tool_name": "calendar_list_events",
+                    "title": null,
                     "output": {
                       "date": "today",
                       "events": [
@@ -590,6 +596,7 @@
                   },
                   {
                     "tool_name": "gmail_search",
+                    "title": null,
                     "output": {
                       "query": "is:unread newer_than:1d",
                       "messages": [
@@ -612,6 +619,8 @@
               "ok": true,
               "output": {
                 "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.",
+                "sources": [],
+                "usage": null,
                 "mocked": true
               },
               "error": null,
@@ -623,9 +632,7 @@
             "id": "t5",
             "title": "Send the summary to Telegram",
             "tool_name": "telegram_send_message",
-            "arguments": {
-              "chat": "Me (Saved Messages)"
-            },
+            "arguments": {},
             "depends_on": [
               "t4"
             ],
@@ -637,7 +644,6 @@
             "result": {
               "tool_name": "telegram_send_message",
               "arguments": {
-                "chat": "Me (Saved Messages)",
                 "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya."
               },
               "ok": true,
@@ -755,9 +761,7 @@
             "id": "t5",
             "title": "Send the summary to Telegram",
             "tool_name": "telegram_send_message",
-            "arguments": {
-              "chat": "Me (Saved Messages)"
-            },
+            "arguments": {},
             "depends_on": [
               "t4"
             ],
@@ -930,9 +934,11 @@
             "result": {
               "tool_name": "summarize",
               "arguments": {
+                "instruction": "Summarize the results for the user.",
                 "sources": [
                   {
                     "tool_name": "get_weather",
+                    "title": null,
                     "output": {
                       "city": "Singapore",
                       "temperature": 23.0,
@@ -946,6 +952,7 @@
                   },
                   {
                     "tool_name": "calendar_list_events",
+                    "title": null,
                     "output": {
                       "date": "today",
                       "events": [
@@ -967,6 +974,7 @@
                   },
                   {
                     "tool_name": "gmail_search",
+                    "title": null,
                     "output": {
                       "query": "is:unread newer_than:1d",
                       "messages": [
@@ -989,6 +997,8 @@
               "ok": true,
               "output": {
                 "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.",
+                "sources": [],
+                "usage": null,
                 "mocked": true
               },
               "error": null,
@@ -1205,9 +1215,11 @@
             "result": {
               "tool_name": "summarize",
               "arguments": {
+                "instruction": "Summarize the results for the user.",
                 "sources": [
                   {
                     "tool_name": "get_weather",
+                    "title": null,
                     "output": {
                       "city": "Singapore",
                       "temperature": 23.0,
@@ -1221,6 +1233,7 @@
                   },
                   {
                     "tool_name": "calendar_list_events",
+                    "title": null,
                     "output": {
                       "date": "today",
                       "events": [
@@ -1242,6 +1255,7 @@
                   },
                   {
                     "tool_name": "gmail_search",
+                    "title": null,
                     "output": {
                       "query": "is:unread newer_than:1d",
                       "messages": [
@@ -1264,6 +1278,8 @@
               "ok": true,
               "output": {
                 "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.",
+                "sources": [],
+                "usage": null,
                 "mocked": true
               },
               "error": null,
@@ -1275,9 +1291,7 @@
             "id": "t5",
             "title": "Send the summary to Telegram",
             "tool_name": "telegram_send_message",
-            "arguments": {
-              "chat": "Me (Saved Messages)"
-            },
+            "arguments": {},
             "depends_on": [
               "t4"
             ],
@@ -1391,9 +1405,7 @@
             "id": "t5",
             "title": "Send the summary to Telegram",
             "tool_name": "telegram_send_message",
-            "arguments": {
-              "chat": "Me (Saved Messages)"
-            },
+            "arguments": {},
             "depends_on": [
               "t4"
             ],
@@ -1571,9 +1583,7 @@
             "id": "t5",
             "title": "Send the summary to Telegram",
             "tool_name": "telegram_send_message",
-            "arguments": {
-              "chat": "Me (Saved Messages)"
-            },
+            "arguments": {},
             "depends_on": [
               "t4"
             ],

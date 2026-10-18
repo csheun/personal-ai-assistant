@@ -28,6 +28,15 @@ InputT = TypeVar("InputT", bound=BaseModel)
 OutputT = TypeVar("OutputT", bound=BaseModel)
 
 
+@dataclass(frozen=True)
+class ActionPreview:
+    """What the user is asked to approve before an external_write tool runs."""
+
+    action: str  # e.g. "Send a Telegram message to Me"
+    destination: str  # e.g. "Telegram · Me"
+    body: str  # exactly what will be sent
+
+
 class ToolInput(BaseModel):
     """Base for tool inputs. Unknown fields are rejected rather than silently dropped."""
 
@@ -42,9 +51,18 @@ class Tool(Generic[InputT, OutputT]):
     output_model: type[OutputT]
     handler: Callable[[InputT], Awaitable[OutputT]]
     mocked: bool = False
-    # Acts on the outside world (sends, posts, deletes). Workflows require user approval
-    # before running these, and the free-form agent is never given them.
-    side_effects: bool = False
+    # "read": only fetches data. "external_write": acts on the outside world (sends, posts).
+    # Workflows always require the user's approval before running an external_write tool.
+    risk: Literal["read", "external_write"] = "read"
+    # Input fields the backend fills from upstream task results at run time. The LLM planner
+    # never sees or sets them, so it can't invent data it hasn't fetched yet.
+    bound_inputs: frozenset[str] = frozenset()
+    # external_write tools describe the action for the approval card, from validated input.
+    describe_action: Callable[[InputT], ActionPreview] | None = None
+
+    @property
+    def side_effects(self) -> bool:
+        return self.risk == "external_write"
 
     def to_llm_schema(self) -> dict[str, Any]:
         """OpenAI-style function schema; LangChain converts it for any provider."""
