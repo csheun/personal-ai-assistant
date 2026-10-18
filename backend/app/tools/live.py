@@ -12,9 +12,10 @@ from app.config import Settings
 from app.llm.client import LLMClient
 from app.providers.open_meteo import OpenMeteoClient
 from app.providers.tavily import TavilyClient
+from app.providers.telegram import TelegramClient
 from app.tools.base import ToolRegistry
 from app.tools.summarize import make_llm_summarize_tool
-from app.tools.telegram import telegram_tool
+from app.tools.telegram import make_telegram_tool, telegram_tool
 from app.tools.weather import make_weather_tool
 from app.tools.web_search import make_web_search_tool
 
@@ -44,6 +45,19 @@ def build_live_registry(settings: Settings, http: httpx.AsyncClient, llm: LLMCli
 
     registry.register(make_llm_summarize_tool(llm, timeout_seconds=settings.llm_timeout_seconds + _GRACE_SECONDS))
 
-    # Phase 5 replaces this with the real Telegram tool. Until then sending is simulated.
-    registry.register(telegram_tool)
+    if settings.telegram_bot_token and settings.telegram_chat_id:
+        client = TelegramClient(
+            http, settings.telegram_bot_token.get_secret_value(), timeout_seconds=settings.telegram_timeout_seconds
+        )
+        registry.register(
+            make_telegram_tool(
+                client,
+                chat_id=settings.telegram_chat_id,
+                label=settings.telegram_chat_label,
+                timeout_seconds=settings.telegram_timeout_seconds + _GRACE_SECONDS,
+            )
+        )
+    else:
+        logger.warning("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set: Telegram sending is simulated.")
+        registry.register(telegram_tool)
     return registry

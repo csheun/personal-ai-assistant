@@ -396,7 +396,9 @@
                 "chat": "Me (Saved Messages)",
                 "characters": 132,
                 "delivered": false,
-                "note": "Mock mode: no message was sent to Telegram.",
+                "message_id": null,
+                "sent_at": null,
+                "note": "Simulated: no message was sent to Telegram.",
                 "mocked": true
               },
               "error": null,
@@ -652,7 +654,9 @@
                 "chat": "Me (Saved Messages)",
                 "characters": 132,
                 "delivered": false,
-                "note": "Mock mode: no message was sent to Telegram.",
+                "message_id": null,
+                "sent_at": null,
+                "note": "Simulated: no message was sent to Telegram.",
                 "mocked": true
               },
               "error": null,

@@ -173,6 +173,15 @@ class ToolRegistry:
             raw_output = await asyncio.wait_for(tool.handler(parsed), timeout=timeout)
             output = tool.output_model.model_validate(raw_output)
         except TimeoutError:
+            if tool.risk == "external_write":
+                # We stopped waiting, but the action may already have happened: never report "not done".
+                return failure(
+                    ToolError(
+                        code="delivery_unknown",
+                        message=f"{_label(name)} didn't finish within {timeout:g}s. It may or may not have happened; "
+                        "check before trying again.",
+                    )
+                )
             return failure(ToolError(code="timeout", message=f"{_label(name)} didn't respond within {timeout:g}s."))
         except ToolFailure as exc:
             logger.warning("Tool '%s' failed: %s (%s)", name, exc.message, exc.code)

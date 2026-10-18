@@ -243,3 +243,44 @@ def test_summary_mentions_simulated_telegram_honestly() -> None:
     with client:
         final = run_to_end(client, chat(client, "News to Telegram")["run"]["id"], approve=True)
     assert "Telegram is simulated here" in final["summary"]
+
+
+TELEGRAM_OK = {"ok": True, "result": {"message_id": 7, "date": 1792400000, "chat": {"id": 99}}}
+
+
+def test_demo_flow_really_sends_after_approval_when_telegram_is_configured() -> None:
+    sent: list[dict] = []
+    llm, _ = fake_llm(
+        plan(SEARCH, task("t3", "summarize", {}, ["t2"]), task("t4", "telegram_send_message", {}, ["t3"])),
+        synthesis("Model A shipped [1].", refs=[1]),
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "api.telegram.org":
+            sent.append(json.loads(request.content))
+            return httpx.Response(200, json=TELEGRAM_OK)
+        return httpx.Response(200, json=NEWS)
+
+    config = Settings(
+        _env_file=None,  # type: ignore[call-arg]
+        mock_mode=False, groq_api_key="test", web_search_api_key="tvly-test",
+        telegram_bot_token="123:abc", telegram_chat_id="99", telegram_chat_label="Saved Messages",
+    )  # fmt: skip
+    with TestClient(create_app(config, llm=llm, http_transport=httpx.MockTransport(handler))) as client:
+        caps = {t["name"]: t["mocked"] for t in client.get("/api/capabilities").json()["tools"]}
+        assert caps["telegram_send_message"] is False
+        run_id = chat(client, "AI news to Telegram")["run"]["id"]
+        client.post(f"/api/workflows/{run_id}/start")
+        waiting = wait_for_status(client, run_id, "waiting_for_approval")
+        assert sent == []  # nothing goes out before approval
+        approval = waiting["approvals"][0]
+        assert approval["preview"]["destination"] == "Telegram · Saved Messages"
+
+        client.post(f"/api/workflows/{run_id}/approve", json={"approval_id": approval["id"], "decision": "approve"})
+        final = wait_for_status(client, run_id, "completed")
+        again = client.post(f"/api/workflows/{run_id}/approve", json={"approval_id": approval["id"], "decision": "approve"})
+
+    assert sent == [{"chat_id": "99", "text": "Model A shipped [1].", "link_preview_options": {"is_disabled": True}}]
+    assert again.status_code == 409 and len(sent) == 1  # a second approve can't send twice
+    assert final["tasks"][2]["result"]["output"]["message_id"] == 7
+    assert "Sent to Telegram (Saved Messages)" in final["summary"]

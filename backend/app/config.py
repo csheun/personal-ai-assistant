@@ -60,6 +60,13 @@ class Settings(BaseSettings):
     # Weather: Open-Meteo (https://open-meteo.com), keyless. Web search: Tavily (https://tavily.com).
     web_search_api_key: SecretStr | None = None
     weather_timeout_seconds: float = Field(default=8.0, gt=0)
+    # Telegram: both token and chat id are needed to really send; otherwise sending is simulated.
+    telegram_bot_token: SecretStr | None = None
+    # The ONLY destination messages can go to. Never taken from the LLM or the request.
+    telegram_chat_id: str | None = None
+    # How the destination is shown on the approval card, e.g. "Saved Messages".
+    telegram_chat_label: str = "your Telegram chat"
+    telegram_timeout_seconds: float = Field(default=10.0, gt=0)
     web_search_timeout_seconds: float = Field(default=10.0, gt=0)
 
     # --- Workflows (Milestone 3: all tools mocked) ---

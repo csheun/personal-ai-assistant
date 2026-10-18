@@ -77,6 +77,8 @@ class WorkflowRunner:
         self.log = EventLog()
         self._jobs: dict[str, asyncio.Task[None]] = {}
         self._spawned: set[str] = set()
+        # Arguments frozen when an approval is requested: approving runs exactly what was shown.
+        self._approved_arguments: dict[str, dict[str, Any]] = {}
         self._done = asyncio.Event()
 
     @property
@@ -177,13 +179,46 @@ class WorkflowRunner:
             status="pending",
             created_at=self._clock(),
         )
+        self._approved_arguments[task.id] = arguments
         self._emit(ApprovalRequested, task_id=task.id, data=ApprovalData(approval=approval))
+
+    def _needs_approval(self, task: WorkflowTask) -> bool:
+        tool = self._tools.get(task.tool_name)
+        return task.requires_approval or (tool is not None and tool.risk == "external_write")
+
+    def _arguments_for(self, task: WorkflowTask) -> dict[str, Any] | None:
+        """Arguments to run with, or None if the task must not run.
+
+        Side-effecting tasks run only with an *approved* approval for this exact task, and only
+        with the arguments frozen when that approval was requested. This check lives here, at the
+        last moment before execution, so no other code path can skip it.
+        """
+        if not self._needs_approval(task):
+            return resolve_arguments(task, self._upstream(task))
+        approved = any(a.task_id == task.id and a.status == "approved" for a in self._run.approvals)
+        if not approved or task.id not in self._approved_arguments:
+            return None
+        return self._approved_arguments[task.id]
 
     async def _execute(self, task_id: str) -> None:
         task = self._task(task_id)
         started = self._clock()
+        arguments = self._arguments_for(task)
+        if arguments is None:
+            logger.error("Refused to run %s/%s without approval", self._run.id, task_id)
+            self._jobs.pop(task_id, None)
+            refused = ToolResult(
+                tool_name=task.tool_name,
+                arguments={},
+                ok=False,
+                error=ToolError(code="execution_failed", message="Not run: this action needs your approval first."),
+            )
+            reason = "Not run: this action needs your approval first."
+            self._emit(TaskFailed, task_id=task_id, data=TaskFailedData(result=refused, duration_ms=0, reason=reason))
+            self._advance()
+            return
         try:
-            result = await self._tools.execute(task.tool_name, resolve_arguments(task, self._upstream(task)))
+            result = await self._tools.execute(task.tool_name, arguments)
         except asyncio.CancelledError:
             return  # cancel() already emitted the events
         except Exception:  # the registry contains tool errors; this is a bug guard

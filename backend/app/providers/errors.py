@@ -1,6 +1,17 @@
 from typing import Literal
 
-ProviderErrorKind = Literal["not_found", "timeout", "rate_limited", "auth", "unavailable", "bad_response", "bad_request"]
+ProviderErrorKind = Literal[
+    "not_found",
+    "timeout",
+    "rate_limited",
+    "auth",
+    "unavailable",
+    "bad_response",
+    "bad_request",
+    # The request may have reached the provider, but no confirmation came back. For actions
+    # (sending a message) this means "maybe done": callers must not retry blindly.
+    "uncertain",
+]
 
 
 class ProviderError(Exception):

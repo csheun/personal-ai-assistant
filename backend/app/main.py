@@ -55,6 +55,8 @@ def create_app(
     """App factory. Tests can pass their own settings, a fake LLM, a fake HTTP transport or a service."""
     settings = settings or get_settings()
     logging.basicConfig(level=settings.log_level)
+    # httpx logs every request URL at INFO, and Telegram's URL contains the bot token.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
