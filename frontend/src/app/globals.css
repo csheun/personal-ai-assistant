@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+/* Dark mode follows a `.dark` class on <html>, set before paint by the script in layout.tsx. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Base */
+  --bg: #edf0f4;
+  --surface: #ffffff;
+  --surface-sunk: #f5f7fa;
+  --line: #dbe0e8;
+  --line-strong: #c3cad6;
+  --ink: #161b26;
+  --muted: #5a6475;
+  --faint: #8590a2;
+
+  /* Action */
+  --accent: #2f5bea;
+  --accent-hover: #2549c4;
+  --accent-ink: #ffffff;
+  --accent-soft: #e4eafd;
+
+  /* Decision: reserved for things that need the user */
+  --decide: #c98a04;
+  --decide-soft: #fcf2d8;
+  --decide-ink: #6e4c00;
+
+  /* Outcomes */
+  --ok: #1d8556;
+  --ok-soft: #dcf1e6;
+  --fail: #c0392f;
+  --fail-soft: #fbe4e1;
+}
+
+.dark {
+  --bg: #0f1218;
+  --surface: #171b23;
+  --surface-sunk: #12151c;
+  --line: #262c38;
+  --line-strong: #36404f;
+  --ink: #e5e9f0;
+  --muted: #9ba5b6;
+  --faint: #6c7689;
+
+  --accent: #86a2ff;
+  --accent-hover: #a3b8ff;
+  --accent-ink: #0f1218;
+  --accent-soft: #1d2643;
+
+  --decide: #f0b429;
+  --decide-soft: #2e2510;
+  --decide-ink: #f6cd6a;
+
+  --ok: #4cc38a;
+  --ok-soft: #13291f;
+  --fail: #f07167;
+  --fail-soft: #33191a;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sunk: var(--surface-sunk);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-decide: var(--decide);
+  --color-decide-soft: var(--decide-soft);
+  --color-decide-ink: var(--decide-ink);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-fail: var(--fail);
+  --color-fail-soft: var(--fail-soft);
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+
+  --animate-rise: rise 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+body {
+  font-feature-settings: "tnum" 0;
+}
+
+/* Durations and counters: tabular figures so digits don't shift while ticking. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Waiting-for-approval bars: hatched, so the state reads without color. */
+.hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--decide) 0 6px,
+    color-mix(in srgb, var(--decide) 45%, transparent) 6px 12px
+  );
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+dialog::backdrop {
+  background: rgb(10 12 18 / 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes slide-in-up {
+  from {
+    transform: translateY(100%);
+  }
+}
