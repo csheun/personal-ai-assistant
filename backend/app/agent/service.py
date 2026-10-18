@@ -74,7 +74,10 @@ class AgentService:
 def build_agent_service(settings: Settings) -> AgentService:
     return AgentService(
         llm=build_chat_model(settings),
-        registry=build_default_registry(timeout_seconds=settings.tool_timeout_seconds),
+        # Side-effecting tools (e.g. Telegram) need user approval, which only workflows provide.
+        registry=build_default_registry(timeout_seconds=settings.tool_timeout_seconds).filtered(
+            lambda tool: not tool.side_effects
+        ),
         max_iterations=settings.agent_max_iterations,
         model_name=f"{settings.llm_provider}:{settings.llm_model}",
     )

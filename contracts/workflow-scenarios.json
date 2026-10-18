@@ -1,0 +1,1771 @@
+{
+  "scenarios": [
+    {
+      "name": "approve",
+      "initial": {
+        "id": "run_approve",
+        "conversation_id": "conv_1",
+        "goal": "Gather the weather, your calendar and your inbox, summarize, then send to Telegram.",
+        "status": "planned",
+        "tasks": [
+          {
+            "id": "t1",
+            "title": "Check Singapore weather",
+            "tool_name": "get_weather",
+            "arguments": {
+              "city": "Singapore"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          },
+          {
+            "id": "t2",
+            "title": "Read today's calendar",
+            "tool_name": "calendar_list_events",
+            "arguments": {
+              "date": "today"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          },
+          {
+            "id": "t3",
+            "title": "Scan unread email",
+            "tool_name": "gmail_search",
+            "arguments": {
+              "query": "is:unread newer_than:1d"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          },
+          {
+            "id": "t4",
+            "title": "Write a summary",
+            "tool_name": "summarize",
+            "arguments": {},
+            "depends_on": [
+              "t1",
+              "t2",
+              "t3"
+            ],
+            "requires_approval": false,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          },
+          {
+            "id": "t5",
+            "title": "Send the summary to Telegram",
+            "tool_name": "telegram_send_message",
+            "arguments": {
+              "chat": "Me (Saved Messages)"
+            },
+            "depends_on": [
+              "t4"
+            ],
+            "requires_approval": true,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          }
+        ],
+        "created_at": "2026-01-01T08:00:00.100000Z",
+        "started_at": null,
+        "finished_at": null,
+        "summary": null,
+        "approvals": [],
+        "last_event_id": 0
+      },
+      "events": [
+        {
+          "id": 1,
+          "run_id": "run_approve",
+          "timestamp": "2026-01-01T08:00:00.200000Z",
+          "task_id": null,
+          "type": "run.started",
+          "data": {}
+        },
+        {
+          "id": 2,
+          "run_id": "run_approve",
+          "timestamp": "2026-01-01T08:00:00.300000Z",
+          "task_id": "t1",
+          "type": "task.started",
+          "data": {}
+        },
+        {
+          "id": 3,
+          "run_id": "run_approve",
+          "timestamp": "2026-01-01T08:00:00.400000Z",
+          "task_id": "t2",
+          "type": "task.started",
+          "data": {}
+        },
+        {
+          "id": 4,
+          "run_id": "run_approve",
+          "timestamp": "2026-01-01T08:00:00.500000Z",
+          "task_id": "t3",
+          "type": "task.started",
+          "data": {}
+        },
+        {
+          "id": 5,
+          "run_id": "run_approve",
+          "timestamp": "2026-01-01T08:00:00.800000Z",
+          "task_id": "t1",
+          "type": "task.completed",
+          "data": {
+            "result": {
+              "tool_name": "get_weather",
+              "arguments": {
+                "city": "Singapore",
+                "unit": "celsius"
+              },
+              "ok": true,
+              "output": {
+                "city": "Singapore",
+                "temperature": 23.0,
+                "unit": "celsius",
+                "condition": "Sunny",
+                "humidity_percent": 58,
+                "observed_at": "2026-01-01T08:00:00Z",
+                "mocked": true,
+                "source": "mock"
+              },
+              "error": null,
+              "mocked": true
+            },
+            "duration_ms": 100
+          }
+        },
+        {
+          "id": 6,
+          "run_id": "run_approve",
+          "timestamp": "2026-01-01T08:00:01.100000Z",
+          "task_id": "t2",
+          "type": "task.completed",
+          "data": {
+            "result": {
+              "tool_name": "calendar_list_events",
+              "arguments": {
+                "date": "today"
+              },
+              "ok": true,
+              "output": {
+                "date": "today",
+                "events": [
+                  {
+                    "time": "09:30",
+                    "title": "Team standup"
+                  },
+                  {
+                    "time": "13:00",
+                    "title": "Lunch with Priya"
+                  },
+                  {
+                    "time": "16:00",
+                    "title": "Design review"
+                  }
+                ],
+                "mocked": true
+              },
+              "error": null,
+              "mocked": true
+            },
+            "duration_ms": 100
+          }
+        },
+        {
+          "id": 7,
+          "run_id": "run_approve",
+          "timestamp": "2026-01-01T08:00:01.400000Z",
+          "task_id": "t3",
+          "type": "task.completed",
+          "data": {
+            "result": {
+              "tool_name": "gmail_search",
+              "arguments": {
+                "query": "is:unread newer_than:1d"
+              },
+              "ok": true,
+              "output": {
+                "query": "is:unread newer_than:1d",
+                "messages": [
+                  {
+                    "sender": "DBS Bank",
+                    "subject": "Your statement is ready",
+                    "received": "07:12"
+                  },
+                  {
+                    "sender": "Priya",
+                    "subject": "Lunch — still on?",
+                    "received": "08:03"
+                  }
+                ],
+                "mocked": true
+              },
+              "error": null,
+              "mocked": true
+            },
+            "duration_ms": 100
+          }
+        },
+        {
+          "id": 8,
+          "run_id": "run_approve",
+          "timestamp": "2026-01-01T08:00:01.500000Z",
+          "task_id": "t4",
+          "type": "task.started",
+          "data": {}
+        },
+        {
+          "id": 9,
+          "run_id": "run_approve",
+          "timestamp": "2026-01-01T08:00:01.800000Z",
+          "task_id": "t4",
+          "type": "task.completed",
+          "data": {
+            "result": {
+              "tool_name": "summarize",
+              "arguments": {
+                "sources": [
+                  {
+                    "tool_name": "get_weather",
+                    "output": {
+                      "city": "Singapore",
+                      "temperature": 23.0,
+                      "unit": "celsius",
+                      "condition": "Sunny",
+                      "humidity_percent": 58,
+                      "observed_at": "2026-01-01T08:00:00Z",
+                      "mocked": true,
+                      "source": "mock"
+                    }
+                  },
+                  {
+                    "tool_name": "calendar_list_events",
+                    "output": {
+                      "date": "today",
+                      "events": [
+                        {
+                          "time": "09:30",
+                          "title": "Team standup"
+                        },
+                        {
+                          "time": "13:00",
+                          "title": "Lunch with Priya"
+                        },
+                        {
+                          "time": "16:00",
+                          "title": "Design review"
+                        }
+                      ],
+                      "mocked": true
+                    }
+                  },
+                  {
+                    "tool_name": "gmail_search",
+                    "output": {
+                      "query": "is:unread newer_than:1d",
+                      "messages": [
+                        {
+                          "sender": "DBS Bank",
+                          "subject": "Your statement is ready",
+                          "received": "07:12"
+                        },
+                        {
+                          "sender": "Priya",
+                          "subject": "Lunch — still on?",
+                          "received": "08:03"
+                        }
+                      ],
+                      "mocked": true
+                    }
+                  }
+                ]
+              },
+              "ok": true,
+              "output": {
+                "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.",
+                "mocked": true
+              },
+              "error": null,
+              "mocked": true
+            },
+            "duration_ms": 100
+          }
+        },
+        {
+          "id": 10,
+          "run_id": "run_approve",
+          "timestamp": "2026-01-01T08:00:02Z",
+          "task_id": "t5",
+          "type": "approval.requested",
+          "data": {
+            "approval": {
+              "id": "apr_1",
+              "run_id": "run_approve",
+              "task_id": "t5",
+              "tool_name": "telegram_send_message",
+              "action": "Send a Telegram message to Me (Saved Messages)",
+              "preview": {
+                "destination": "Telegram · Me (Saved Messages)",
+                "body": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya."
+              },
+              "status": "pending",
+              "created_at": "2026-01-01T08:00:01.900000Z",
+              "resolved_at": null
+            }
+          }
+        },
+        {
+          "id": 11,
+          "run_id": "run_approve",
+          "timestamp": "2026-01-01T08:00:02.200000Z",
+          "task_id": "t5",
+          "type": "approval.resolved",
+          "data": {
+            "approval": {
+              "id": "apr_1",
+              "run_id": "run_approve",
+              "task_id": "t5",
+              "tool_name": "telegram_send_message",
+              "action": "Send a Telegram message to Me (Saved Messages)",
+              "preview": {
+                "destination": "Telegram · Me (Saved Messages)",
+                "body": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya."
+              },
+              "status": "approved",
+              "created_at": "2026-01-01T08:00:01.900000Z",
+              "resolved_at": "2026-01-01T08:00:02.100000Z"
+            }
+          }
+        },
+        {
+          "id": 12,
+          "run_id": "run_approve",
+          "timestamp": "2026-01-01T08:00:02.300000Z",
+          "task_id": "t5",
+          "type": "task.started",
+          "data": {}
+        },
+        {
+          "id": 13,
+          "run_id": "run_approve",
+          "timestamp": "2026-01-01T08:00:02.600000Z",
+          "task_id": "t5",
+          "type": "task.completed",
+          "data": {
+            "result": {
+              "tool_name": "telegram_send_message",
+              "arguments": {
+                "chat": "Me (Saved Messages)",
+                "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya."
+              },
+              "ok": true,
+              "output": {
+                "chat": "Me (Saved Messages)",
+                "characters": 132,
+                "delivered": false,
+                "note": "Mock mode: no message was sent to Telegram.",
+                "mocked": true
+              },
+              "error": null,
+              "mocked": true
+            },
+            "duration_ms": 100
+          }
+        },
+        {
+          "id": 14,
+          "run_id": "run_approve",
+          "timestamp": "2026-01-01T08:00:02.700000Z",
+          "task_id": null,
+          "type": "run.completed",
+          "data": {
+            "summary": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.\n\nYou approved the Telegram message. In mock mode nothing was actually sent."
+          }
+        }
+      ],
+      "final": {
+        "id": "run_approve",
+        "conversation_id": "conv_1",
+        "goal": "Gather the weather, your calendar and your inbox, summarize, then send to Telegram.",
+        "status": "completed",
+        "tasks": [
+          {
+            "id": "t1",
+            "title": "Check Singapore weather",
+            "tool_name": "get_weather",
+            "arguments": {
+              "city": "Singapore"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "completed",
+            "started_at": "2026-01-01T08:00:00.300000Z",
+            "finished_at": "2026-01-01T08:00:00.800000Z",
+            "duration_ms": 100,
+            "result": {
+              "tool_name": "get_weather",
+              "arguments": {
+                "city": "Singapore",
+                "unit": "celsius"
+              },
+              "ok": true,
+              "output": {
+                "city": "Singapore",
+                "temperature": 23.0,
+                "unit": "celsius",
+                "condition": "Sunny",
+                "humidity_percent": 58,
+                "observed_at": "2026-01-01T08:00:00Z",
+                "mocked": true,
+                "source": "mock"
+              },
+              "error": null,
+              "mocked": true
+            },
+            "status_reason": null
+          },
+          {
+            "id": "t2",
+            "title": "Read today's calendar",
+            "tool_name": "calendar_list_events",
+            "arguments": {
+              "date": "today"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "completed",
+            "started_at": "2026-01-01T08:00:00.400000Z",
+            "finished_at": "2026-01-01T08:00:01.100000Z",
+            "duration_ms": 100,
+            "result": {
+              "tool_name": "calendar_list_events",
+              "arguments": {
+                "date": "today"
+              },
+              "ok": true,
+              "output": {
+                "date": "today",
+                "events": [
+                  {
+                    "time": "09:30",
+                    "title": "Team standup"
+                  },
+                  {
+                    "time": "13:00",
+                    "title": "Lunch with Priya"
+                  },
+                  {
+                    "time": "16:00",
+                    "title": "Design review"
+                  }
+                ],
+                "mocked": true
+              },
+              "error": null,
+              "mocked": true
+            },
+            "status_reason": null
+          },
+          {
+            "id": "t3",
+            "title": "Scan unread email",
+            "tool_name": "gmail_search",
+            "arguments": {
+              "query": "is:unread newer_than:1d"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "completed",
+            "started_at": "2026-01-01T08:00:00.500000Z",
+            "finished_at": "2026-01-01T08:00:01.400000Z",
+            "duration_ms": 100,
+            "result": {
+              "tool_name": "gmail_search",
+              "arguments": {
+                "query": "is:unread newer_than:1d"
+              },
+              "ok": true,
+              "output": {
+                "query": "is:unread newer_than:1d",
+                "messages": [
+                  {
+                    "sender": "DBS Bank",
+                    "subject": "Your statement is ready",
+                    "received": "07:12"
+                  },
+                  {
+                    "sender": "Priya",
+                    "subject": "Lunch — still on?",
+                    "received": "08:03"
+                  }
+                ],
+                "mocked": true
+              },
+              "error": null,
+              "mocked": true
+            },
+            "status_reason": null
+          },
+          {
+            "id": "t4",
+            "title": "Write a summary",
+            "tool_name": "summarize",
+            "arguments": {},
+            "depends_on": [
+              "t1",
+              "t2",
+              "t3"
+            ],
+            "requires_approval": false,
+            "status": "completed",
+            "started_at": "2026-01-01T08:00:01.500000Z",
+            "finished_at": "2026-01-01T08:00:01.800000Z",
+            "duration_ms": 100,
+            "result": {
+              "tool_name": "summarize",
+              "arguments": {
+                "sources": [
+                  {
+                    "tool_name": "get_weather",
+                    "output": {
+                      "city": "Singapore",
+                      "temperature": 23.0,
+                      "unit": "celsius",
+                      "condition": "Sunny",
+                      "humidity_percent": 58,
+                      "observed_at": "2026-01-01T08:00:00Z",
+                      "mocked": true,
+                      "source": "mock"
+                    }
+                  },
+                  {
+                    "tool_name": "calendar_list_events",
+                    "output": {
+                      "date": "today",
+                      "events": [
+                        {
+                          "time": "09:30",
+                          "title": "Team standup"
+                        },
+                        {
+                          "time": "13:00",
+                          "title": "Lunch with Priya"
+                        },
+                        {
+                          "time": "16:00",
+                          "title": "Design review"
+                        }
+                      ],
+                      "mocked": true
+                    }
+                  },
+                  {
+                    "tool_name": "gmail_search",
+                    "output": {
+                      "query": "is:unread newer_than:1d",
+                      "messages": [
+                        {
+                          "sender": "DBS Bank",
+                          "subject": "Your statement is ready",
+                          "received": "07:12"
+                        },
+                        {
+                          "sender": "Priya",
+                          "subject": "Lunch — still on?",
+                          "received": "08:03"
+                        }
+                      ],
+                      "mocked": true
+                    }
+                  }
+                ]
+              },
+              "ok": true,
+              "output": {
+                "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.",
+                "mocked": true
+              },
+              "error": null,
+              "mocked": true
+            },
+            "status_reason": null
+          },
+          {
+            "id": "t5",
+            "title": "Send the summary to Telegram",
+            "tool_name": "telegram_send_message",
+            "arguments": {
+              "chat": "Me (Saved Messages)"
+            },
+            "depends_on": [
+              "t4"
+            ],
+            "requires_approval": true,
+            "status": "completed",
+            "started_at": "2026-01-01T08:00:02.300000Z",
+            "finished_at": "2026-01-01T08:00:02.600000Z",
+            "duration_ms": 100,
+            "result": {
+              "tool_name": "telegram_send_message",
+              "arguments": {
+                "chat": "Me (Saved Messages)",
+                "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya."
+              },
+              "ok": true,
+              "output": {
+                "chat": "Me (Saved Messages)",
+                "characters": 132,
+                "delivered": false,
+                "note": "Mock mode: no message was sent to Telegram.",
+                "mocked": true
+              },
+              "error": null,
+              "mocked": true
+            },
+            "status_reason": null
+          }
+        ],
+        "created_at": "2026-01-01T08:00:00.100000Z",
+        "started_at": "2026-01-01T08:00:00.200000Z",
+        "finished_at": "2026-01-01T08:00:02.700000Z",
+        "summary": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.\n\nYou approved the Telegram message. In mock mode nothing was actually sent.",
+        "approvals": [
+          {
+            "id": "apr_1",
+            "run_id": "run_approve",
+            "task_id": "t5",
+            "tool_name": "telegram_send_message",
+            "action": "Send a Telegram message to Me (Saved Messages)",
+            "preview": {
+              "destination": "Telegram · Me (Saved Messages)",
+              "body": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya."
+            },
+            "status": "approved",
+            "created_at": "2026-01-01T08:00:01.900000Z",
+            "resolved_at": "2026-01-01T08:00:02.100000Z"
+          }
+        ],
+        "last_event_id": 14
+      }
+    },
+    {
+      "name": "reject",
+      "initial": {
+        "id": "run_reject",
+        "conversation_id": "conv_1",
+        "goal": "Gather the weather, your calendar and your inbox, summarize, then send to Telegram.",
+        "status": "planned",
+        "tasks": [
+          {
+            "id": "t1",
+            "title": "Check Singapore weather",
+            "tool_name": "get_weather",
+            "arguments": {
+              "city": "Singapore"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          },
+          {
+            "id": "t2",
+            "title": "Read today's calendar",
+            "tool_name": "calendar_list_events",
+            "arguments": {
+              "date": "today"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          },
+          {
+            "id": "t3",
+            "title": "Scan unread email",
+            "tool_name": "gmail_search",
+            "arguments": {
+              "query": "is:unread newer_than:1d"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          },
+          {
+            "id": "t4",
+            "title": "Write a summary",
+            "tool_name": "summarize",
+            "arguments": {},
+            "depends_on": [
+              "t1",
+              "t2",
+              "t3"
+            ],
+            "requires_approval": false,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          },
+          {
+            "id": "t5",
+            "title": "Send the summary to Telegram",
+            "tool_name": "telegram_send_message",
+            "arguments": {
+              "chat": "Me (Saved Messages)"
+            },
+            "depends_on": [
+              "t4"
+            ],
+            "requires_approval": true,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          }
+        ],
+        "created_at": "2026-01-01T08:00:00.100000Z",
+        "started_at": null,
+        "finished_at": null,
+        "summary": null,
+        "approvals": [],
+        "last_event_id": 0
+      },
+      "events": [
+        {
+          "id": 1,
+          "run_id": "run_reject",
+          "timestamp": "2026-01-01T08:00:00.200000Z",
+          "task_id": null,
+          "type": "run.started",
+          "data": {}
+        },
+        {
+          "id": 2,
+          "run_id": "run_reject",
+          "timestamp": "2026-01-01T08:00:00.300000Z",
+          "task_id": "t1",
+          "type": "task.started",
+          "data": {}
+        },
+        {
+          "id": 3,
+          "run_id": "run_reject",
+          "timestamp": "2026-01-01T08:00:00.400000Z",
+          "task_id": "t2",
+          "type": "task.started",
+          "data": {}
+        },
+        {
+          "id": 4,
+          "run_id": "run_reject",
+          "timestamp": "2026-01-01T08:00:00.500000Z",
+          "task_id": "t3",
+          "type": "task.started",
+          "data": {}
+        },
+        {
+          "id": 5,
+          "run_id": "run_reject",
+          "timestamp": "2026-01-01T08:00:00.800000Z",
+          "task_id": "t1",
+          "type": "task.completed",
+          "data": {
+            "result": {
+              "tool_name": "get_weather",
+              "arguments": {
+                "city": "Singapore",
+                "unit": "celsius"
+              },
+              "ok": true,
+              "output": {
+                "city": "Singapore",
+                "temperature": 23.0,
+                "unit": "celsius",
+                "condition": "Sunny",
+                "humidity_percent": 58,
+                "observed_at": "2026-01-01T08:00:00Z",
+                "mocked": true,
+                "source": "mock"
+              },
+              "error": null,
+              "mocked": true
+            },
+            "duration_ms": 100
+          }
+        },
+        {
+          "id": 6,
+          "run_id": "run_reject",
+          "timestamp": "2026-01-01T08:00:01.100000Z",
+          "task_id": "t2",
+          "type": "task.completed",
+          "data": {
+            "result": {
+              "tool_name": "calendar_list_events",
+              "arguments": {
+                "date": "today"
+              },
+              "ok": true,
+              "output": {
+                "date": "today",
+                "events": [
+                  {
+                    "time": "09:30",
+                    "title": "Team standup"
+                  },
+                  {
+                    "time": "13:00",
+                    "title": "Lunch with Priya"
+                  },
+                  {
+                    "time": "16:00",
+                    "title": "Design review"
+                  }
+                ],
+                "mocked": true
+              },
+              "error": null,
+              "mocked": true
+            },
+            "duration_ms": 100
+          }
+        },
+        {
+          "id": 7,
+          "run_id": "run_reject",
+          "timestamp": "2026-01-01T08:00:01.400000Z",
+          "task_id": "t3",
+          "type": "task.completed",
+          "data": {
+            "result": {
+              "tool_name": "gmail_search",
+              "arguments": {
+                "query": "is:unread newer_than:1d"
+              },
+              "ok": true,
+              "output": {
+                "query": "is:unread newer_than:1d",
+                "messages": [
+                  {
+                    "sender": "DBS Bank",
+                    "subject": "Your statement is ready",
+                    "received": "07:12"
+                  },
+                  {
+                    "sender": "Priya",
+                    "subject": "Lunch — still on?",
+                    "received": "08:03"
+                  }
+                ],
+                "mocked": true
+              },
+              "error": null,
+              "mocked": true
+            },
+            "duration_ms": 100
+          }
+        },
+        {
+          "id": 8,
+          "run_id": "run_reject",
+          "timestamp": "2026-01-01T08:00:01.500000Z",
+          "task_id": "t4",
+          "type": "task.started",
+          "data": {}
+        },
+        {
+          "id": 9,
+          "run_id": "run_reject",
+          "timestamp": "2026-01-01T08:00:01.800000Z",
+          "task_id": "t4",
+          "type": "task.completed",
+          "data": {
+            "result": {
+              "tool_name": "summarize",
+              "arguments": {
+                "sources": [
+                  {
+                    "tool_name": "get_weather",
+                    "output": {
+                      "city": "Singapore",
+                      "temperature": 23.0,
+                      "unit": "celsius",
+                      "condition": "Sunny",
+                      "humidity_percent": 58,
+                      "observed_at": "2026-01-01T08:00:00Z",
+                      "mocked": true,
+                      "source": "mock"
+                    }
+                  },
+                  {
+                    "tool_name": "calendar_list_events",
+                    "output": {
+                      "date": "today",
+                      "events": [
+                        {
+                          "time": "09:30",
+                          "title": "Team standup"
+                        },
+                        {
+                          "time": "13:00",
+                          "title": "Lunch with Priya"
+                        },
+                        {
+                          "time": "16:00",
+                          "title": "Design review"
+                        }
+                      ],
+                      "mocked": true
+                    }
+                  },
+                  {
+                    "tool_name": "gmail_search",
+                    "output": {
+                      "query": "is:unread newer_than:1d",
+                      "messages": [
+                        {
+                          "sender": "DBS Bank",
+                          "subject": "Your statement is ready",
+                          "received": "07:12"
+                        },
+                        {
+                          "sender": "Priya",
+                          "subject": "Lunch — still on?",
+                          "received": "08:03"
+                        }
+                      ],
+                      "mocked": true
+                    }
+                  }
+                ]
+              },
+              "ok": true,
+              "output": {
+                "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.",
+                "mocked": true
+              },
+              "error": null,
+              "mocked": true
+            },
+            "duration_ms": 100
+          }
+        },
+        {
+          "id": 10,
+          "run_id": "run_reject",
+          "timestamp": "2026-01-01T08:00:02Z",
+          "task_id": "t5",
+          "type": "approval.requested",
+          "data": {
+            "approval": {
+              "id": "apr_1",
+              "run_id": "run_reject",
+              "task_id": "t5",
+              "tool_name": "telegram_send_message",
+              "action": "Send a Telegram message to Me (Saved Messages)",
+              "preview": {
+                "destination": "Telegram · Me (Saved Messages)",
+                "body": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya."
+              },
+              "status": "pending",
+              "created_at": "2026-01-01T08:00:01.900000Z",
+              "resolved_at": null
+            }
+          }
+        },
+        {
+          "id": 11,
+          "run_id": "run_reject",
+          "timestamp": "2026-01-01T08:00:02.200000Z",
+          "task_id": "t5",
+          "type": "approval.resolved",
+          "data": {
+            "approval": {
+              "id": "apr_1",
+              "run_id": "run_reject",
+              "task_id": "t5",
+              "tool_name": "telegram_send_message",
+              "action": "Send a Telegram message to Me (Saved Messages)",
+              "preview": {
+                "destination": "Telegram · Me (Saved Messages)",
+                "body": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya."
+              },
+              "status": "rejected",
+              "created_at": "2026-01-01T08:00:01.900000Z",
+              "resolved_at": "2026-01-01T08:00:02.100000Z"
+            }
+          }
+        },
+        {
+          "id": 12,
+          "run_id": "run_reject",
+          "timestamp": "2026-01-01T08:00:02.300000Z",
+          "task_id": "t5",
+          "type": "task.skipped",
+          "data": {
+            "reason": "You rejected this action, so nothing was sent."
+          }
+        },
+        {
+          "id": 13,
+          "run_id": "run_reject",
+          "timestamp": "2026-01-01T08:00:02.400000Z",
+          "task_id": null,
+          "type": "run.completed",
+          "data": {
+            "summary": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.\n\nI didn't send anything to Telegram because you rejected the message."
+          }
+        }
+      ],
+      "final": {
+        "id": "run_reject",
+        "conversation_id": "conv_1",
+        "goal": "Gather the weather, your calendar and your inbox, summarize, then send to Telegram.",
+        "status": "completed",
+        "tasks": [
+          {
+            "id": "t1",
+            "title": "Check Singapore weather",
+            "tool_name": "get_weather",
+            "arguments": {
+              "city": "Singapore"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "completed",
+            "started_at": "2026-01-01T08:00:00.300000Z",
+            "finished_at": "2026-01-01T08:00:00.800000Z",
+            "duration_ms": 100,
+            "result": {
+              "tool_name": "get_weather",
+              "arguments": {
+                "city": "Singapore",
+                "unit": "celsius"
+              },
+              "ok": true,
+              "output": {
+                "city": "Singapore",
+                "temperature": 23.0,
+                "unit": "celsius",
+                "condition": "Sunny",
+                "humidity_percent": 58,
+                "observed_at": "2026-01-01T08:00:00Z",
+                "mocked": true,
+                "source": "mock"
+              },
+              "error": null,
+              "mocked": true
+            },
+            "status_reason": null
+          },
+          {
+            "id": "t2",
+            "title": "Read today's calendar",
+            "tool_name": "calendar_list_events",
+            "arguments": {
+              "date": "today"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "completed",
+            "started_at": "2026-01-01T08:00:00.400000Z",
+            "finished_at": "2026-01-01T08:00:01.100000Z",
+            "duration_ms": 100,
+            "result": {
+              "tool_name": "calendar_list_events",
+              "arguments": {
+                "date": "today"
+              },
+              "ok": true,
+              "output": {
+                "date": "today",
+                "events": [
+                  {
+                    "time": "09:30",
+                    "title": "Team standup"
+                  },
+                  {
+                    "time": "13:00",
+                    "title": "Lunch with Priya"
+                  },
+                  {
+                    "time": "16:00",
+                    "title": "Design review"
+                  }
+                ],
+                "mocked": true
+              },
+              "error": null,
+              "mocked": true
+            },
+            "status_reason": null
+          },
+          {
+            "id": "t3",
+            "title": "Scan unread email",
+            "tool_name": "gmail_search",
+            "arguments": {
+              "query": "is:unread newer_than:1d"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "completed",
+            "started_at": "2026-01-01T08:00:00.500000Z",
+            "finished_at": "2026-01-01T08:00:01.400000Z",
+            "duration_ms": 100,
+            "result": {
+              "tool_name": "gmail_search",
+              "arguments": {
+                "query": "is:unread newer_than:1d"
+              },
+              "ok": true,
+              "output": {
+                "query": "is:unread newer_than:1d",
+                "messages": [
+                  {
+                    "sender": "DBS Bank",
+                    "subject": "Your statement is ready",
+                    "received": "07:12"
+                  },
+                  {
+                    "sender": "Priya",
+                    "subject": "Lunch — still on?",
+                    "received": "08:03"
+                  }
+                ],
+                "mocked": true
+              },
+              "error": null,
+              "mocked": true
+            },
+            "status_reason": null
+          },
+          {
+            "id": "t4",
+            "title": "Write a summary",
+            "tool_name": "summarize",
+            "arguments": {},
+            "depends_on": [
+              "t1",
+              "t2",
+              "t3"
+            ],
+            "requires_approval": false,
+            "status": "completed",
+            "started_at": "2026-01-01T08:00:01.500000Z",
+            "finished_at": "2026-01-01T08:00:01.800000Z",
+            "duration_ms": 100,
+            "result": {
+              "tool_name": "summarize",
+              "arguments": {
+                "sources": [
+                  {
+                    "tool_name": "get_weather",
+                    "output": {
+                      "city": "Singapore",
+                      "temperature": 23.0,
+                      "unit": "celsius",
+                      "condition": "Sunny",
+                      "humidity_percent": 58,
+                      "observed_at": "2026-01-01T08:00:00Z",
+                      "mocked": true,
+                      "source": "mock"
+                    }
+                  },
+                  {
+                    "tool_name": "calendar_list_events",
+                    "output": {
+                      "date": "today",
+                      "events": [
+                        {
+                          "time": "09:30",
+                          "title": "Team standup"
+                        },
+                        {
+                          "time": "13:00",
+                          "title": "Lunch with Priya"
+                        },
+                        {
+                          "time": "16:00",
+                          "title": "Design review"
+                        }
+                      ],
+                      "mocked": true
+                    }
+                  },
+                  {
+                    "tool_name": "gmail_search",
+                    "output": {
+                      "query": "is:unread newer_than:1d",
+                      "messages": [
+                        {
+                          "sender": "DBS Bank",
+                          "subject": "Your statement is ready",
+                          "received": "07:12"
+                        },
+                        {
+                          "sender": "Priya",
+                          "subject": "Lunch — still on?",
+                          "received": "08:03"
+                        }
+                      ],
+                      "mocked": true
+                    }
+                  }
+                ]
+              },
+              "ok": true,
+              "output": {
+                "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.",
+                "mocked": true
+              },
+              "error": null,
+              "mocked": true
+            },
+            "status_reason": null
+          },
+          {
+            "id": "t5",
+            "title": "Send the summary to Telegram",
+            "tool_name": "telegram_send_message",
+            "arguments": {
+              "chat": "Me (Saved Messages)"
+            },
+            "depends_on": [
+              "t4"
+            ],
+            "requires_approval": true,
+            "status": "skipped",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": "You rejected this action, so nothing was sent."
+          }
+        ],
+        "created_at": "2026-01-01T08:00:00.100000Z",
+        "started_at": "2026-01-01T08:00:00.200000Z",
+        "finished_at": "2026-01-01T08:00:02.400000Z",
+        "summary": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.\n\nI didn't send anything to Telegram because you rejected the message.",
+        "approvals": [
+          {
+            "id": "apr_1",
+            "run_id": "run_reject",
+            "task_id": "t5",
+            "tool_name": "telegram_send_message",
+            "action": "Send a Telegram message to Me (Saved Messages)",
+            "preview": {
+              "destination": "Telegram · Me (Saved Messages)",
+              "body": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya."
+            },
+            "status": "rejected",
+            "created_at": "2026-01-01T08:00:01.900000Z",
+            "resolved_at": "2026-01-01T08:00:02.100000Z"
+          }
+        ],
+        "last_event_id": 13
+      }
+    },
+    {
+      "name": "cancel",
+      "initial": {
+        "id": "run_cancel",
+        "conversation_id": "conv_1",
+        "goal": "Gather the weather, your calendar and your inbox, summarize, then send to Telegram.",
+        "status": "planned",
+        "tasks": [
+          {
+            "id": "t1",
+            "title": "Check Singapore weather",
+            "tool_name": "get_weather",
+            "arguments": {
+              "city": "Singapore"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          },
+          {
+            "id": "t2",
+            "title": "Read today's calendar",
+            "tool_name": "calendar_list_events",
+            "arguments": {
+              "date": "today"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          },
+          {
+            "id": "t3",
+            "title": "Scan unread email",
+            "tool_name": "gmail_search",
+            "arguments": {
+              "query": "is:unread newer_than:1d"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          },
+          {
+            "id": "t4",
+            "title": "Write a summary",
+            "tool_name": "summarize",
+            "arguments": {},
+            "depends_on": [
+              "t1",
+              "t2",
+              "t3"
+            ],
+            "requires_approval": false,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          },
+          {
+            "id": "t5",
+            "title": "Send the summary to Telegram",
+            "tool_name": "telegram_send_message",
+            "arguments": {
+              "chat": "Me (Saved Messages)"
+            },
+            "depends_on": [
+              "t4"
+            ],
+            "requires_approval": true,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          }
+        ],
+        "created_at": "2026-01-01T08:00:00.100000Z",
+        "started_at": null,
+        "finished_at": null,
+        "summary": null,
+        "approvals": [],
+        "last_event_id": 0
+      },
+      "events": [
+        {
+          "id": 1,
+          "run_id": "run_cancel",
+          "timestamp": "2026-01-01T08:00:00.200000Z",
+          "task_id": null,
+          "type": "run.started",
+          "data": {}
+        },
+        {
+          "id": 2,
+          "run_id": "run_cancel",
+          "timestamp": "2026-01-01T08:00:00.300000Z",
+          "task_id": "t1",
+          "type": "task.started",
+          "data": {}
+        },
+        {
+          "id": 3,
+          "run_id": "run_cancel",
+          "timestamp": "2026-01-01T08:00:00.400000Z",
+          "task_id": "t2",
+          "type": "task.started",
+          "data": {}
+        },
+        {
+          "id": 4,
+          "run_id": "run_cancel",
+          "timestamp": "2026-01-01T08:00:00.500000Z",
+          "task_id": "t3",
+          "type": "task.started",
+          "data": {}
+        },
+        {
+          "id": 5,
+          "run_id": "run_cancel",
+          "timestamp": "2026-01-01T08:00:00.600000Z",
+          "task_id": "t1",
+          "type": "task.cancelled",
+          "data": {}
+        },
+        {
+          "id": 6,
+          "run_id": "run_cancel",
+          "timestamp": "2026-01-01T08:00:00.700000Z",
+          "task_id": "t2",
+          "type": "task.cancelled",
+          "data": {}
+        },
+        {
+          "id": 7,
+          "run_id": "run_cancel",
+          "timestamp": "2026-01-01T08:00:00.800000Z",
+          "task_id": "t3",
+          "type": "task.cancelled",
+          "data": {}
+        },
+        {
+          "id": 8,
+          "run_id": "run_cancel",
+          "timestamp": "2026-01-01T08:00:00.900000Z",
+          "task_id": "t4",
+          "type": "task.cancelled",
+          "data": {}
+        },
+        {
+          "id": 9,
+          "run_id": "run_cancel",
+          "timestamp": "2026-01-01T08:00:01Z",
+          "task_id": "t5",
+          "type": "task.cancelled",
+          "data": {}
+        },
+        {
+          "id": 10,
+          "run_id": "run_cancel",
+          "timestamp": "2026-01-01T08:00:01.100000Z",
+          "task_id": null,
+          "type": "run.cancelled",
+          "data": {}
+        }
+      ],
+      "final": {
+        "id": "run_cancel",
+        "conversation_id": "conv_1",
+        "goal": "Gather the weather, your calendar and your inbox, summarize, then send to Telegram.",
+        "status": "cancelled",
+        "tasks": [
+          {
+            "id": "t1",
+            "title": "Check Singapore weather",
+            "tool_name": "get_weather",
+            "arguments": {
+              "city": "Singapore"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "cancelled",
+            "started_at": "2026-01-01T08:00:00.300000Z",
+            "finished_at": "2026-01-01T08:00:00.600000Z",
+            "duration_ms": 300,
+            "result": null,
+            "status_reason": "Stopped because you cancelled the run."
+          },
+          {
+            "id": "t2",
+            "title": "Read today's calendar",
+            "tool_name": "calendar_list_events",
+            "arguments": {
+              "date": "today"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "cancelled",
+            "started_at": "2026-01-01T08:00:00.400000Z",
+            "finished_at": "2026-01-01T08:00:00.700000Z",
+            "duration_ms": 300,
+            "result": null,
+            "status_reason": "Stopped because you cancelled the run."
+          },
+          {
+            "id": "t3",
+            "title": "Scan unread email",
+            "tool_name": "gmail_search",
+            "arguments": {
+              "query": "is:unread newer_than:1d"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "cancelled",
+            "started_at": "2026-01-01T08:00:00.500000Z",
+            "finished_at": "2026-01-01T08:00:00.800000Z",
+            "duration_ms": 300,
+            "result": null,
+            "status_reason": "Stopped because you cancelled the run."
+          },
+          {
+            "id": "t4",
+            "title": "Write a summary",
+            "tool_name": "summarize",
+            "arguments": {},
+            "depends_on": [
+              "t1",
+              "t2",
+              "t3"
+            ],
+            "requires_approval": false,
+            "status": "cancelled",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": "Stopped because you cancelled the run."
+          },
+          {
+            "id": "t5",
+            "title": "Send the summary to Telegram",
+            "tool_name": "telegram_send_message",
+            "arguments": {
+              "chat": "Me (Saved Messages)"
+            },
+            "depends_on": [
+              "t4"
+            ],
+            "requires_approval": true,
+            "status": "cancelled",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": "Stopped because you cancelled the run."
+          }
+        ],
+        "created_at": "2026-01-01T08:00:00.100000Z",
+        "started_at": "2026-01-01T08:00:00.200000Z",
+        "finished_at": "2026-01-01T08:00:01.100000Z",
+        "summary": null,
+        "approvals": [],
+        "last_event_id": 10
+      }
+    },
+    {
+      "name": "failure",
+      "initial": {
+        "id": "run_failure",
+        "conversation_id": "conv_1",
+        "goal": "Gather the weather, summarize.",
+        "status": "planned",
+        "tasks": [
+          {
+            "id": "t1",
+            "title": "Check Oslo weather",
+            "tool_name": "get_weather",
+            "arguments": {
+              "city": "Oslo"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          },
+          {
+            "id": "t2",
+            "title": "Write a summary",
+            "tool_name": "summarize",
+            "arguments": {},
+            "depends_on": [
+              "t1"
+            ],
+            "requires_approval": false,
+            "status": "pending",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": null
+          }
+        ],
+        "created_at": "2026-01-01T08:00:00.100000Z",
+        "started_at": null,
+        "finished_at": null,
+        "summary": null,
+        "approvals": [],
+        "last_event_id": 0
+      },
+      "events": [
+        {
+          "id": 1,
+          "run_id": "run_failure",
+          "timestamp": "2026-01-01T08:00:00.200000Z",
+          "task_id": null,
+          "type": "run.started",
+          "data": {}
+        },
+        {
+          "id": 2,
+          "run_id": "run_failure",
+          "timestamp": "2026-01-01T08:00:00.300000Z",
+          "task_id": "t1",
+          "type": "task.started",
+          "data": {}
+        },
+        {
+          "id": 3,
+          "run_id": "run_failure",
+          "timestamp": "2026-01-01T08:00:00.600000Z",
+          "task_id": "t1",
+          "type": "task.failed",
+          "data": {
+            "result": {
+              "tool_name": "get_weather",
+              "arguments": {
+                "city": "Oslo",
+                "unit": "celsius"
+              },
+              "ok": false,
+              "output": null,
+              "error": {
+                "code": "simulated_failure",
+                "message": "The weather service didn't respond in time.",
+                "details": null
+              },
+              "mocked": true
+            },
+            "duration_ms": 100,
+            "reason": "The weather service didn't respond in time."
+          }
+        },
+        {
+          "id": 4,
+          "run_id": "run_failure",
+          "timestamp": "2026-01-01T08:00:00.700000Z",
+          "task_id": "t2",
+          "type": "task.skipped",
+          "data": {
+            "reason": "Skipped because \"Check Oslo weather\" didn't complete."
+          }
+        },
+        {
+          "id": 5,
+          "run_id": "run_failure",
+          "timestamp": "2026-01-01T08:00:00.800000Z",
+          "task_id": null,
+          "type": "run.failed",
+          "data": {
+            "reason": "\"Check Oslo weather\" failed, so the run couldn't finish."
+          }
+        }
+      ],
+      "final": {
+        "id": "run_failure",
+        "conversation_id": "conv_1",
+        "goal": "Gather the weather, summarize.",
+        "status": "failed",
+        "tasks": [
+          {
+            "id": "t1",
+            "title": "Check Oslo weather",
+            "tool_name": "get_weather",
+            "arguments": {
+              "city": "Oslo"
+            },
+            "depends_on": [],
+            "requires_approval": false,
+            "status": "failed",
+            "started_at": "2026-01-01T08:00:00.300000Z",
+            "finished_at": "2026-01-01T08:00:00.600000Z",
+            "duration_ms": 100,
+            "result": {
+              "tool_name": "get_weather",
+              "arguments": {
+                "city": "Oslo",
+                "unit": "celsius"
+              },
+              "ok": false,
+              "output": null,
+              "error": {
+                "code": "simulated_failure",
+                "message": "The weather service didn't respond in time.",
+                "details": null
+              },
+              "mocked": true
+            },
+            "status_reason": "The weather service didn't respond in time."
+          },
+          {
+            "id": "t2",
+            "title": "Write a summary",
+            "tool_name": "summarize",
+            "arguments": {},
+            "depends_on": [
+              "t1"
+            ],
+            "requires_approval": false,
+            "status": "skipped",
+            "started_at": null,
+            "finished_at": null,
+            "duration_ms": null,
+            "result": null,
+            "status_reason": "Skipped because \"Check Oslo weather\" didn't complete."
+          }
+        ],
+        "created_at": "2026-01-01T08:00:00.100000Z",
+        "started_at": "2026-01-01T08:00:00.200000Z",
+        "finished_at": "2026-01-01T08:00:00.800000Z",
+        "summary": null,
+        "approvals": [],
+        "last_event_id": 5
+      }
+    }
+  ]
+}

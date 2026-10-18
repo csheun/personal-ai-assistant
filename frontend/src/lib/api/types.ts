@@ -1,9 +1,11 @@
 /**
- * API contracts shared by the mock client and the future FastAPI client.
+ * API contract shared by the mock client and the FastAPI backend.
  *
- * Field names are snake_case on purpose: they are the exact JSON shapes the
- * FastAPI/Pydantic backend will send, so no mapping layer is needed.
- * Timestamps are ISO-8601 strings; durations are milliseconds.
+ * Mirrors `backend/app/workflows/models.py` field for field. Names are snake_case
+ * because they are the exact JSON FastAPI sends, so no mapping layer is needed.
+ * Timestamps are ISO-8601 UTC strings; durations are milliseconds.
+ * `contracts/workflow-scenarios.json` (recorded from the Python runner) is replayed
+ * through the TypeScript reducer in tests/unit/contract.test.ts to keep both sides in sync.
  */
 
 export type ID = string;
@@ -47,13 +49,24 @@ export type ToolName =
   | "summarize"
   | "telegram_send_message";
 
+export type ToolErrorCode = "unknown_tool" | "invalid_arguments" | "execution_failed" | "timeout" | "simulated_failure";
+
+export interface ToolError {
+  code: ToolErrorCode;
+  message: string;
+  /** Validation errors, for `invalid_arguments`. */
+  details?: Record<string, unknown>[] | null;
+}
+
 export interface ToolResult {
   tool_name: ToolName;
+  /** The validated arguments the tool actually ran with. */
+  arguments: Record<string, unknown>;
   ok: boolean;
   /** Validated tool output; shape depends on the tool. */
   output: Record<string, unknown> | null;
-  error: { code: string; message: string } | null;
-  /** True when the data is simulated. Always true in mock mode. */
+  error: ToolError | null;
+  /** True when the data is simulated. Always true until Milestone 4. */
   mocked: boolean;
 }
 
@@ -112,8 +125,8 @@ export interface WorkflowRun {
   summary: string | null;
   /** Approval requests raised during this run (pending and resolved). */
   approvals: ApprovalRequest[];
-  /** Seq of the last event reflected in this snapshot. Resume the stream after it. */
-  last_event_seq: number;
+  /** Id of the last event reflected in this snapshot. Resume the event stream after it. */
+  last_event_id: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -139,28 +152,34 @@ export interface ApprovalRequest {
 export type ApprovalDecision = "approve" | "reject";
 
 // ---------------------------------------------------------------------------
-// Events (the SSE stream: GET /api/runs/{id}/events)
+// Events: GET /api/workflows/{id}/events (SSE). One envelope, typed `data` per type.
 // ---------------------------------------------------------------------------
 
-interface EventBase {
+type Empty = Record<string, never>;
+
+interface Envelope<Type extends string, Data> {
+  /** Monotonic per run, starting at 1. Also the SSE `id`, so reconnects resume after it. */
+  id: number;
   run_id: ID;
-  /** Monotonic per run; lets the client drop duplicates and detect gaps on reconnect. */
-  seq: number;
   timestamp: ISODateTime;
+  /** The task this event is about, or null for run-level events. */
+  task_id: ID | null;
+  type: Type;
+  data: Data;
 }
 
 export type WorkflowEvent =
-  | (EventBase & { type: "run.started" })
-  | (EventBase & { type: "task.started"; task_id: ID })
-  | (EventBase & { type: "task.completed"; task_id: ID; result: ToolResult; duration_ms: number })
-  | (EventBase & { type: "task.failed"; task_id: ID; result: ToolResult; duration_ms: number; reason: string })
-  | (EventBase & { type: "task.skipped"; task_id: ID; reason: string })
-  | (EventBase & { type: "task.cancelled"; task_id: ID })
-  | (EventBase & { type: "approval.requested"; task_id: ID; approval: ApprovalRequest })
-  | (EventBase & { type: "approval.resolved"; task_id: ID; approval: ApprovalRequest })
-  | (EventBase & { type: "run.completed"; summary: string })
-  | (EventBase & { type: "run.failed"; reason: string })
-  | (EventBase & { type: "run.cancelled" });
+  | Envelope<"run.started", Empty>
+  | Envelope<"task.started", Empty>
+  | Envelope<"task.completed", { result: ToolResult; duration_ms: number }>
+  | Envelope<"task.failed", { result: ToolResult; duration_ms: number; reason: string }>
+  | Envelope<"task.skipped", { reason: string }>
+  | Envelope<"task.cancelled", Empty>
+  | Envelope<"approval.requested", { approval: ApprovalRequest }>
+  | Envelope<"approval.resolved", { approval: ApprovalRequest }>
+  | Envelope<"run.completed", { summary: string }>
+  | Envelope<"run.failed", { reason: string }>
+  | Envelope<"run.cancelled", Empty>;
 
 export type WorkflowEventType = WorkflowEvent["type"];
 
@@ -195,7 +214,10 @@ export interface UsageStats {
   time_saved_by_parallelism_ms: number;
 }
 
-/** Error body shape returned by FastAPI (`{"detail": ...}`). */
+/**
+ * A failed request. `status` is the HTTP status (FastAPI's `{"detail": ...}` becomes the
+ * message), or 0 when the server couldn't be reached at all.
+ */
 export class ApiError extends Error {
   constructor(
     public readonly status: number,

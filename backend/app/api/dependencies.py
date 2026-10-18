@@ -1,8 +1,13 @@
-from fastapi import Request
+from typing import Annotated
 
-from app.agent.service import AgentService
+from fastapi import Depends, Request
+
+from app.workflows.service import WorkflowService
 
 
-def get_agent(request: Request) -> AgentService:
-    """The agent is built once at startup (see app.main) and shared across requests."""
-    return request.app.state.agent
+def get_workflows(request: Request) -> WorkflowService:
+    """Built once at startup (see app.main) and shared by every request."""
+    return request.app.state.workflows
+
+
+Workflows = Annotated[WorkflowService, Depends(get_workflows)]

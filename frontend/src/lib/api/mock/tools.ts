@@ -29,13 +29,21 @@ export function simulateToolResult(task: WorkflowTask, upstream: WorkflowTask[],
   if (fail) {
     return {
       tool_name: task.tool_name,
+      arguments: task.arguments,
       ok: false,
       output: null,
       error: { code: "simulated_failure", message: FAILURE_MESSAGES[task.tool_name] },
       mocked: true,
     };
   }
-  return { tool_name: task.tool_name, ok: true, output: mockOutput(task, upstream), error: null, mocked: true };
+  return {
+    tool_name: task.tool_name,
+    arguments: task.arguments,
+    ok: true,
+    output: mockOutput(task, upstream),
+    error: null,
+    mocked: true,
+  };
 }
 
 function mockOutput(task: WorkflowTask, upstream: WorkflowTask[]): Record<string, unknown> {

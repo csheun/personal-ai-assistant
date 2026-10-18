@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MockApiClient } from "@/lib/api/mock/mock-client";
+import { MockWorkflowClient } from "@/lib/api/mock/mock-client";
 import { ApiError, type WorkflowEvent } from "@/lib/api/types";
 
 beforeEach(() => {
@@ -22,9 +22,9 @@ async function settle<T>(promise: Promise<T>): Promise<T> {
   return result.value;
 }
 
-describe("MockApiClient", () => {
+describe("MockWorkflowClient", () => {
   it("creates a conversation with a planned run", async () => {
-    const client = new MockApiClient();
+    const client = new MockWorkflowClient();
     const res = await settle(client.sendMessage({ conversation_id: null, message: "Briefing please, send to Telegram" }));
 
     expect(res.conversation.title).toBe("Briefing please, send to Telegram");
@@ -35,7 +35,7 @@ describe("MockApiClient", () => {
   });
 
   it("validates input like the API", async () => {
-    const client = new MockApiClient();
+    const client = new MockWorkflowClient();
     await expect(settle(client.sendMessage({ conversation_id: null, message: "  " }))).rejects.toMatchObject({ status: 422 });
     await expect(settle(client.sendMessage({ conversation_id: "nope", message: "hi" }))).rejects.toBeInstanceOf(ApiError);
     await expect(settle(client.sendMessage({ conversation_id: null, message: "simulate error" }))).rejects.toMatchObject({
@@ -44,17 +44,17 @@ describe("MockApiClient", () => {
   });
 
   it("runs end to end over the event stream, never sending for real", async () => {
-    const client = new MockApiClient();
+    const client = new MockWorkflowClient();
     const { run } = await settle(client.sendMessage({ conversation_id: null, message: "Briefing, send to Telegram" }));
     const events: WorkflowEvent[] = [];
-    client.subscribeToRun(run!.id, (e) => events.push(e));
+    client.subscribeToRun(run!.id, { onEvent: (e) => events.push(e) });
 
     await settle(client.startRun(run!.id));
     await vi.advanceTimersByTimeAsync(10_000);
 
     const approval = (await settle(client.getRun(run!.id))).approvals[0];
     expect(approval.preview.body).toContain("°C");
-    await settle(client.resolveApproval(approval.id, "approve"));
+    await settle(client.resolveApproval(run!.id, approval.id, "approve"));
     await vi.advanceTimersByTimeAsync(10_000);
 
     const finished = await settle(client.getRun(run!.id));
@@ -71,7 +71,7 @@ describe("MockApiClient", () => {
   });
 
   it("seeds completed example conversations", async () => {
-    const client = new MockApiClient({ seed: true });
+    const client = new MockWorkflowClient({ seed: true });
     const conversations = await settle(client.listConversations());
     expect(conversations.map((c) => c.title)).toEqual([
       "Give me a morning briefing and send it to Telegram",

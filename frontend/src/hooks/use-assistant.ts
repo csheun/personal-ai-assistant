@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
-import type { ApiClient } from "@/lib/api/client";
+import type { ConnectionStatus, WorkflowClient } from "@/lib/api/client";
 import { ApiError, type ApprovalDecision, type ID, type RunStatus } from "@/lib/api/types";
 import { assistantReducer, initialState } from "@/lib/state/assistant-state";
 
@@ -12,12 +12,14 @@ const messageOf = (error: unknown) =>
   error instanceof ApiError ? error.message : "Something went wrong. Check your connection and try again.";
 
 /**
- * Connects the pure state reducer to an ApiClient: loads data, sends messages,
- * and keeps one event subscription open per unfinished run.
+ * Connects the pure state reducer to a WorkflowClient: loads data, sends messages,
+ * and keeps one event stream open per unfinished run. Works the same against the
+ * in-browser mock and FastAPI.
  */
-export function useAssistantController(client: ApiClient) {
+export function useAssistantController(client: WorkflowClient) {
   const [state, dispatch] = useReducer(assistantReducer, initialState);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [connection, setConnection] = useState<ConnectionStatus>("checking");
   const subscriptions = useRef(new Map<ID, () => void>());
   const stateRef = useRef(state);
   useEffect(() => {
@@ -40,6 +42,19 @@ export function useAssistantController(client: ApiClient) {
     loadConversations();
     refreshStats();
   }, [loadConversations, refreshStats]);
+
+  useEffect(() => client.watchConnection(setConnection), [client]);
+
+  // Back online after an outage: reload the sidebar if it failed to load meanwhile.
+  const wasOffline = useRef(false);
+  useEffect(() => {
+    if (connection === "offline") wasOffline.current = true;
+    if (connection === "online" && wasOffline.current) {
+      wasOffline.current = false;
+      if (stateRef.current.conversationsStatus === "error") loadConversations();
+      refreshStats();
+    }
+  }, [connection, loadConversations, refreshStats]);
 
   const loadMessages = useCallback(
     async (conversationId: ID) => {
@@ -65,6 +80,22 @@ export function useAssistantController(client: ApiClient) {
     [loadMessages],
   );
 
+  // The open conversation lives in the URL (?c=…), so a refresh reopens it: messages and the
+  // run snapshot are fetched again and the event stream resumes from the snapshot's last event.
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("c");
+    if (fromUrl) selectConversation(fromUrl);
+  }, [selectConversation]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const id = state.activeConversationId;
+    if ((url.searchParams.get("c") ?? null) === id) return;
+    if (id) url.searchParams.set("c", id);
+    else url.searchParams.delete("c");
+    window.history.replaceState(null, "", url);
+  }, [state.activeConversationId]);
+
   const sendMessage = useCallback(
     async (text: string) => {
       dispatch({ type: "send/started", text });
@@ -87,10 +118,19 @@ export function useAssistantController(client: ApiClient) {
     [],
   );
 
-  const startRun = useCallback((runId: ID) => command(() => client.startRun(runId)), [client, command]);
-  const cancelRun = useCallback((runId: ID) => command(() => client.cancelRun(runId)), [client, command]);
+  // Commands return a fresh snapshot; applying it keeps the UI correct even if the event stream
+  // is down. The reducer ignores snapshots older than what the stream already delivered.
+  const startRun = useCallback(
+    (runId: ID) => command(() => client.startRun(runId).then((run) => dispatch({ type: "run/loaded", run }))),
+    [client, command],
+  );
+  const cancelRun = useCallback(
+    (runId: ID) => command(() => client.cancelRun(runId).then((run) => dispatch({ type: "run/loaded", run }))),
+    [client, command],
+  );
   const resolveApproval = useCallback(
-    (approvalId: ID, decision: ApprovalDecision) => command(() => client.resolveApproval(approvalId, decision)),
+    (runId: ID, approvalId: ID, decision: ApprovalDecision) =>
+      command(() => client.resolveApproval(runId, approvalId, decision)),
     [client, command],
   );
 
@@ -100,7 +140,15 @@ export function useAssistantController(client: ApiClient) {
     for (const run of Object.values(state.runs)) {
       const finished = FINISHED.has(run.status);
       if (!finished && !subs.has(run.id)) {
-        subs.set(run.id, client.subscribeToRun(run.id, (event) => dispatch({ type: "run/event", event }), run.last_event_seq));
+        const unsubscribe = client.subscribeToRun(
+          run.id,
+          {
+            onEvent: (event) => dispatch({ type: "run/event", event }),
+            onStatusChange: (status) => dispatch({ type: "run/stream", runId: run.id, status }),
+          },
+          run.last_event_id,
+        );
+        subs.set(run.id, unsubscribe);
       } else if (finished && subs.has(run.id)) {
         subs.get(run.id)!();
         subs.delete(run.id);
@@ -119,6 +167,7 @@ export function useAssistantController(client: ApiClient) {
 
   return {
     state,
+    connection,
     actionError,
     dismissActionError: () => setActionError(null),
     loadConversations,

@@ -6,6 +6,7 @@ import { useAssistant } from "@/components/assistant-provider";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useNow } from "@/hooks/use-now";
+import { apiMode, type ConnectionStatus } from "@/lib/api";
 import { formatRelative } from "@/lib/format";
 
 const INTEGRATIONS: { name: string; icon: LucideIcon; note: string }[] = [
@@ -18,7 +19,7 @@ const INTEGRATIONS: { name: string; icon: LucideIcon; note: string }[] = [
 ];
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { state, selectConversation, loadConversations } = useAssistant();
+  const { state, connection, selectConversation, loadConversations } = useAssistant();
   const now = useNow(false);
 
   const open = (id: string | null) => {
@@ -102,10 +103,31 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         </ul>
       </section>
 
-      <div className="flex items-center justify-between border-t border-line px-2 pt-3">
-        <span className="text-[12px] text-faint">Mock mode: nothing leaves this browser</span>
+      <div className="flex items-center justify-between gap-2 border-t border-line px-2 pt-3">
+        {apiMode() === "http" ? (
+          <ConnectionNote status={connection} />
+        ) : (
+          <span className="text-[12px] text-faint">Demo mode, runs in your browser</span>
+        )}
         <ThemeToggle />
       </div>
     </nav>
+  );
+}
+
+const CONNECTION: Record<ConnectionStatus, { text: string; dot: string; tone: string }> = {
+  checking: { text: "Connecting to the backend…", dot: "bg-line-strong", tone: "text-faint" },
+  online: { text: "Backend connected, tools mocked", dot: "bg-ok", tone: "text-faint" },
+  offline: { text: "Can't reach the backend. Retrying…", dot: "bg-fail", tone: "text-fail" },
+};
+
+/** Live backend reachability (HTTP mode). The text carries the meaning; the dot is decoration. */
+function ConnectionNote({ status }: { status: ConnectionStatus }) {
+  const { text, dot, tone } = CONNECTION[status];
+  return (
+    <p role="status" className={`flex min-w-0 items-center gap-1.5 text-[12px] ${tone}`}>
+      <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${dot}`} />
+      {text}
+    </p>
   );
 }

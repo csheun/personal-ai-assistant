@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     agent_max_iterations: int = Field(default=5, ge=1, le=20)
     tool_timeout_seconds: float = Field(default=10.0, gt=0)
 
+    # --- Workflows (Milestone 3: all tools mocked) ---
+    # Multiplies each mocked tool's simulated latency. 0 = instant, 1 = realistic demo pacing.
+    mock_latency_scale: float = Field(default=1.0, ge=0, le=10)
+    # Browser origins allowed to call the API (the Next.js dev server by default).
+    cors_origins: list[str] = ["http://localhost:3000"]
+    # Comment lines sent on idle SSE streams so proxies don't close them.
+    sse_heartbeat_seconds: float = Field(default=15.0, gt=0)
+
 
 @lru_cache
 def get_settings() -> Settings:

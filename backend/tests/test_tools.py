@@ -100,6 +100,13 @@ async def test_handler_timeout() -> None:
     assert result.error.code == "timeout"
 
 
+def test_filtered_registry_drops_side_effect_tools(registry: ToolRegistry) -> None:
+    safe = registry.filtered(lambda tool: not tool.side_effects)
+    assert "telegram_send_message" in registry.names
+    assert "telegram_send_message" not in safe.names
+    assert "get_weather" in safe.names
+
+
 def test_duplicate_registration_fails() -> None:
     registry = build_default_registry()
     with pytest.raises(ValueError):
@@ -108,6 +115,6 @@ def test_duplicate_registration_fails() -> None:
 
 def test_llm_schemas_mark_mocked_tools(registry: ToolRegistry) -> None:
     schemas = {s["function"]["name"]: s["function"] for s in registry.llm_schemas()}
-    assert set(schemas) == {"get_weather", "web_search"}
+    assert {"get_weather", "web_search", "summarize", "telegram_send_message"} <= set(schemas)
     assert schemas["get_weather"]["description"].startswith("[MOCKED DATA]")
     assert schemas["get_weather"]["parameters"]["required"] == ["city"]
