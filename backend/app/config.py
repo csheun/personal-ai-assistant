@@ -53,6 +53,12 @@ class Settings(BaseSettings):
 
     tool_timeout_seconds: float = Field(default=10.0, gt=0)
 
+    # --- External tools (used when MOCK_MODE=false) ---
+    # Weather: Open-Meteo (https://open-meteo.com), keyless. Web search: Tavily (https://tavily.com).
+    web_search_api_key: SecretStr | None = None
+    weather_timeout_seconds: float = Field(default=8.0, gt=0)
+    web_search_timeout_seconds: float = Field(default=10.0, gt=0)
+
     # --- Workflows (Milestone 3: all tools mocked) ---
     # Multiplies each mocked tool's simulated latency. 0 = instant, 1 = realistic demo pacing.
     mock_latency_scale: float = Field(default=1.0, ge=0, le=10)

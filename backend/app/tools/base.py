@@ -59,6 +59,8 @@ class Tool(Generic[InputT, OutputT]):
     bound_inputs: frozenset[str] = frozenset()
     # external_write tools describe the action for the approval card, from validated input.
     describe_action: Callable[[InputT], ActionPreview] | None = None
+    # Overrides the registry's default timeout (e.g. LLM calls need longer than a weather lookup).
+    timeout_seconds: float | None = None
 
     @property
     def side_effects(self) -> bool:
@@ -77,7 +79,25 @@ class Tool(Generic[InputT, OutputT]):
         }
 
 
-ToolErrorCode = Literal["unknown_tool", "invalid_arguments", "execution_failed", "timeout", "simulated_failure"]
+ToolErrorCode = Literal[
+    "unknown_tool",
+    "invalid_arguments",
+    "execution_failed",
+    "timeout",
+    "simulated_failure",
+    "not_found",  # e.g. no place matches the location
+    "provider_error",  # the external service failed, refused or returned something unusable
+    "delivery_unknown",  # a send may or may not have happened (never retried automatically)
+]
+
+
+class ToolFailure(Exception):
+    """Raised by a handler for an expected failure. `message` is shown to the user and the LLM, so keep it safe."""
+
+    def __init__(self, code: "ToolErrorCode", message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
 
 
 class ToolError(BaseModel):
@@ -148,11 +168,15 @@ class ToolRegistry:
                 )
             )
 
+        timeout = tool.timeout_seconds or self._timeout_seconds
         try:
-            raw_output = await asyncio.wait_for(tool.handler(parsed), timeout=self._timeout_seconds)
+            raw_output = await asyncio.wait_for(tool.handler(parsed), timeout=timeout)
             output = tool.output_model.model_validate(raw_output)
         except TimeoutError:
-            return failure(ToolError(code="timeout", message=f"Tool timed out after {self._timeout_seconds}s."))
+            return failure(ToolError(code="timeout", message=f"{_label(name)} didn't respond within {timeout:g}s."))
+        except ToolFailure as exc:
+            logger.warning("Tool '%s' failed: %s (%s)", name, exc.message, exc.code)
+            return failure(ToolError(code=exc.code, message=exc.message))
         except Exception:
             # Log the real error server-side; don't leak internals (paths, keys, stack traces) to the LLM/client.
             logger.exception("Tool '%s' failed", name)
@@ -165,3 +189,7 @@ class ToolRegistry:
             output=output.model_dump(mode="json"),
             mocked=tool.mocked,
         )
+
+
+def _label(name: str) -> str:
+    return name.replace("_", " ").capitalize()
