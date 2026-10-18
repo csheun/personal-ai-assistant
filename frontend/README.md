@@ -2,10 +2,10 @@
 
 Next.js 16 + TypeScript + Tailwind CSS 4. It has two interchangeable backends:
 
-- **HTTP mode**: the FastAPI server in `../backend` runs the workflows and streams progress over SSE.
-- **Demo mode**: the same behavior simulated in the browser, so you need no backend.
+- **HTTP mode**: the FastAPI server in `../backend` plans and runs the workflows and streams progress over SSE. With the backend's `MOCK_MODE=false`, that means a real LLM planner, live weather and web search, and real Telegram delivery after approval.
+- **Demo mode**: everything simulated in the browser, so you need no backend.
 
-In both modes all tools are mocked: no LLM calls, no external services, and nothing is sent anywhere.
+The UI asks the backend what it can do (`GET /api/capabilities`). The sidebar shows each integration as **Live**, **Simulated** or **Not connected**, and the approval card says whether approving really sends.
 
 ![Desktop: run in progress](docs/screenshots/desktop-3-running.png)
 
@@ -63,9 +63,13 @@ src/
 
 Routes, event types and execution rules are documented in [`../backend/README.md`](../backend/README.md#api). The TypeScript shapes are in [`src/lib/api/types.ts`](src/lib/api/types.ts).
 
-## What Milestone 4 changes here
+## Live mode in the UI
 
-Little to nothing. Real tools and an LLM planner run on the server and emit the same events. Expect only new tool names in `ToolName` and `TOOL_LABELS`, and richer `output` shapes in the results panel. The demo mode can stay as an offline demo or be removed; nothing outside `lib/api/mock/` depends on it.
+Moving to a real LLM and real tools needed no changes to the workflow UI, because it renders the same events. What was added:
+- the planning line on each run ("Planned by groq:openai/gpt-oss-120b in 2.7s, 2,587 tokens")
+- source links under summaries (only `http(s)` URLs, opened with `noopener noreferrer`)
+- LLM call and token statistics
+- capability-driven integration statuses and mode-aware text (composer hint, suggestions, approval note)
 
 ## Screenshots
 

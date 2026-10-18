@@ -4,12 +4,15 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
+def no_network(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> None:
     """Every backend test runs with outbound connections disabled.
 
     The app is exercised in-process (TestClient uses ASGI, not sockets), so any
     connection attempt means some code tried to reach a real external service.
+    Only tests marked `live` (opt-in, see tests/live/) may use the network.
     """
+    if request.node.get_closest_marker("live"):
+        return
 
     def refuse(*args: object, **kwargs: object) -> None:
         raise RuntimeError(f"Network access attempted during tests: {args!r}")

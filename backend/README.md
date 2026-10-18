@@ -1,8 +1,16 @@
 # Backend
 
-FastAPI service that plans and runs the assistant's workflows and streams their progress to the frontend over Server-Sent Events.
+FastAPI service that turns a chat message into a validated plan, runs it as a dependency graph with live progress over Server-Sent Events, and asks for approval before anything acts on the outside world.
 
-> **Milestone 3: everything is mocked.** The planner uses keyword rules. All seven tools return simulated data (`"mocked": true`), and nothing calls an LLM or an external API. The test suite fails if any code opens a network connection.
+It has two modes, chosen with `MOCK_MODE`:
+
+| | `MOCK_MODE=true` (default) | `MOCK_MODE=false` |
+|---|---|---|
+| Planner | Keyword rules (`workflows/planner.py`) | LLM via LangChain + LangGraph (`workflows/llm_planner.py`) |
+| Tools | 7 simulated tools | Open-Meteo weather, Tavily search, LLM summary, Telegram (real if configured) |
+| Keys needed | None | LLM key; `WEB_SEARCH_API_KEY` for search; Telegram token and chat id to really send |
+
+Everything after planning (validation, the executor, approvals, SSE, the API) is the same code in both modes.
 
 ## Run
 
@@ -11,78 +19,119 @@ Requires Python 3.11+ (developed on 3.13).
 ```bash
 cd backend
 python3.13 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-cp .env.example .env        # optional: the defaults work
-uvicorn app.main:app --reload
+pip install -e ".[dev]"          # add ,openai or ,anthropic for those providers
+cp .env.example .env             # MOCK_MODE=true works with no keys
+uvicorn app.main:app --reload    # http://localhost:8000/docs
 ```
 
-API docs: http://localhost:8000/docs. Tests: `pytest`.
+Run as **one worker process** (see [Limitations](#limitations)).
+
+## How a request flows
+
+```
+POST /api/chat
+  └─ WorkflowService.send_message
+       └─ Planner.plan(message, today)
+            mock: keyword rules
+            live: LLMPlanner (LangGraph)  draft ─▶ validate ─▶ repair (at most once) ─▶ validate
+                    └─ validation.py: tools, arguments, ids, dependencies, cycles, size, shape, risk
+       ├─ direct answer → assistant message, no run
+       └─ valid plan    → WorkflowRun(status="planned") + WorkflowRunner
+POST /api/workflows/{id}/start
+  └─ WorkflowRunner (asyncio): every task whose dependencies completed starts now
+       └─ bindings.resolve_arguments (fills summary sources / Telegram text from upstream results)
+       └─ ToolRegistry.execute: validate input → handler (timeout) → validate output
+       └─ every change: event → apply_event (reducer) → EventLog → SSE subscribers
+  external_write task (Telegram) → approval.requested (arguments frozen)
+POST /api/workflows/{id}/approve  → runner re-checks the approval → runs the frozen arguments once
+```
 
 ## API
 
 | Method | Route | Purpose |
 | --- | --- | --- |
-| POST | `/api/chat` | `{conversation_id?, message}` → conversation, both messages, and a `run` in status `planned` (or `null` for a direct reply) |
-| GET | `/api/conversations` · `/api/conversations/{id}/messages` | History for the sidebar |
-| GET | `/api/workflows/{id}` | Run snapshot, with `last_event_id` |
-| POST | `/api/workflows/{id}/start` | Begin executing a planned run |
+| POST | `/api/chat` | `{conversation_id?, message}` → conversation, both messages, and a `run` in status `planned` (or `null` for a direct answer). 502 if no valid plan, 503 if the LLM is unavailable |
+| GET | `/api/conversations`, `/api/conversations/{id}/messages` | History |
+| GET | `/api/workflows/{id}` | Run snapshot, with `last_event_id` and `planning` metadata |
+| POST | `/api/workflows/{id}/start` | Start a planned run |
 | POST | `/api/workflows/{id}/approve` | `{approval_id, decision: "approve" \| "reject"}` |
 | POST | `/api/workflows/{id}/cancel` | Cancel a planned or live run |
-| GET | `/api/workflows/{id}/events` | SSE stream, resumable (see below) |
-| GET | `/api/stats` | Totals across runs |
+| GET | `/api/workflows/{id}/events` | SSE stream (below) |
+| GET | `/api/capabilities` | Mode, model and available tools (never secrets) |
+| GET | `/api/stats` | Run, tool, approval and LLM token totals |
+| GET | `/health` | Liveness |
 
-Errors are `{"detail": ...}`: 404 for an unknown id, 409 for an action that doesn't fit the run's state (such as approving twice), 422 for invalid input, and 503 when the assistant is unavailable (send "simulate error" to trigger it).
+Errors are `{"detail": "..."}`: 404 unknown id, 409 wrong state (such as approving twice), 422 invalid input, 502 planning failed, 503 LLM unavailable.
 
 ### Events
 
-Every state change is an event with one envelope:
+Every state change is one envelope: `{id, run_id, timestamp, type, task_id, data}`. Types are `run.started`, `task.started`, `task.completed`, `task.failed`, `task.skipped`, `task.cancelled`, `approval.requested`, `approval.resolved`, `run.completed`, `run.failed` and `run.cancelled`.
 
-```json
-{ "id": 7, "run_id": "run_…", "timestamp": "…Z", "type": "task.completed", "task_id": "t2",
-  "data": { "result": { "tool_name": "…", "ok": true, "output": {…}, "mocked": true }, "duration_ms": 1301 } }
-```
+- `id` increases per run and is also the SSE `id:`. Resume with `?after=<id>` or `Last-Event-ID` (the header wins).
+- The stream replays missed events, sends live ones and keep-alives, and closes after the run's last event. Disconnecting never affects the run.
+- `contracts/workflow-scenarios.json` is recorded from this runner, and the frontend replays it through its TypeScript reducer, so both sides agree on every state.
 
-Event types: `run.started`, `task.started`, `task.completed`, `task.failed`, `task.skipped`, `task.cancelled`, `approval.requested`, `approval.resolved`, `run.completed`, `run.failed`, `run.cancelled`.
-
-- **`id` increases per run** and doubles as the SSE `id:`. A run snapshot's `last_event_id` says which events it already reflects.
-- **Resume** with `?after=<id>` or the browser's automatic `Last-Event-ID` header. The header wins, because it's newer.
-- **The stream** replays missed events, sends live ones, sends keep-alive comments when idle, and closes after the run's final event. Completed runs remain available through `GET /api/workflows/{id}` and a replay of their stream.
-- **Disconnecting** only ends that stream; the run keeps going.
-
-## Layout
+## Code map
 
 ```
 app/
-  main.py                create_app(): wiring, CORS, domain-error → HTTP mapping
-  config.py              settings from env / .env
-  api/routes/            thin HTTP layer: chat, conversations (+stats), workflows (+SSE)
+  main.py               wiring by MOCK_MODE, one pooled httpx client, CORS, error → HTTP mapping
+  config.py             every setting (env / .env); secrets are SecretStr
+  llm/
+    provider.py         the only module that knows the provider (groq / openai / anthropic)
+    client.py           LLMClient: timeouts, usage metadata, LLMUnavailable vs LLMOutputError
+  providers/            HTTP clients only: open_meteo.py, tavily.py, telegram.py (+ typed ProviderError)
+  tools/
+    base.py             Tool + ToolRegistry: allow-list, validation, per-tool timeouts, risk, bound inputs
+    weather.py, web_search.py, summarize.py, telegram.py   mock + real implementations, same names
+    live.py             the live registry (registers only configured tools)
   workflows/
-    models.py            the API contract (Pydantic); mirrors frontend/src/lib/api/types.ts
-    reducer.py           apply_event(run, event): the only way run state changes
-    graph.py             DAG validation, ready/blocked tasks, parallel-time saving
-    planner.py           MOCK keyword planner → Plan (fixed task graph)
-    bindings.py          feeds upstream results into the summary and Telegram arguments
-    runner.py            asyncio executor for one run (concurrency, approval, cancel, failure)
-    events.py            per-run event log: replay + live fan-out + heartbeats
-    service.py           in-memory store; owns runners; what routes call
-    errors.py            NotFound / WorkflowConflict / AssistantUnavailable
-  tools/                 registry (validation, timeouts, side-effect flag) + 7 mocked tools
-  agent/, llm/           Milestone 1 LangGraph agent, kept for Milestone 4, not routed
+    models.py           the API contract (Pydantic) = frontend/src/lib/api/types.ts
+    plan_schema.py      what the LLM must return
+    validation.py       the rules a plan must pass before anything runs
+    llm_planner.py      LangGraph draft/validate/repair loop
+    planner.py          mock keyword planner
+    plans.py            Plan / DirectReply / Planner interface
+    bindings.py         how tasks consume upstream results
+    runner.py           the executor (one per run)
+    reducer.py          apply_event: the only way run state changes
+    events.py           per-run event log: replay + live fan-out + heartbeats
+    service.py          in-memory store; what the routes call
 ```
 
-**How a run executes.** `start()` emits `run.started` and starts every task whose dependencies have completed, each in its own `asyncio` task. When one finishes, the runner emits its result and re-evaluates the graph. When a dependency fails, its dependants are skipped. Tools flagged `side_effects` (Telegram) always get `requires_approval`, and they wait for `POST /approve`. The runner never edits state directly: it creates an event, applies it with `apply_event`, and appends it to the log. That makes the snapshot and the stream two views of the same data.
+## How LangGraph, the planner, the executor and the registry fit together
 
-**Contract tests.** `tests/contract_scenarios.py` records approve, reject, cancel and failure runs into `contracts/workflow-scenarios.json`. The backend test checks the runner still produces exactly that file, and the frontend test replays it through the TypeScript reducer. After an intentional contract change, run `python -m tests.contract_scenarios --write`.
+- **The tool registry** is the source of truth for what can run. Each tool declares its typed input and output, a risk level (`read` or `external_write`), its timeout, and which inputs the backend fills from upstream results. The planner prompt, the validator and the runner all read the registry, so adding a tool in one place updates all three.
+- **The planner (LangGraph)** only proposes. Its graph is `draft → validate → repair → validate`, with a hard attempt limit. LangGraph fits here because this is a small stateful loop with a conditional exit. Its output is plain data: a list of `WorkflowTask`.
+- **The validator** decides. Plans that use unknown tools, take invalid arguments, reference missing dependencies, contain cycles, are too big or too deep, or have the wrong shape never run. Approval requirements come from tool risk levels, never from the LLM.
+- **The executor (`WorkflowRunner`)** runs. It's plain asyncio, the same code as in mock mode. Independent tasks run concurrently, failures skip dependants, cancellation cancels in-flight HTTP calls, and side effects need an approved approval that the runner checks at the moment of execution.
 
-## What Milestone 4 replaces
+LangGraph is deliberately **not** the executor. A second engine would mean two sources of workflow state, and approvals, SSE and cancellation would all have to be rebuilt.
 
-| Module | Change |
-| --- | --- |
-| `workflows/planner.py` | Swap `MockPlanner` for an LLM planner (the `app/agent` LangGraph code) that returns the same `Plan`. Validate the generated DAG with `graph.validate_dag`. |
-| `tools/weather.py`, `web_search.py`, `telegram.py` | Replace each handler with a real API call. Input and output models stay the same, and so does the `side_effects` flag on Telegram. |
-| `tools/summarize.py` | Generate the summary text with the LLM instead of templates. |
-| `tools/__init__.py` | Stop wrapping real tools in `with_latency`, and register API clients with secrets from settings. |
-| `workflows/bindings.py` | Extend if the LLM planner needs more than "summary ← sources" and "Telegram ← summary". |
-| `runner.py`, `events.py`, routes, `models.py`, `reducer.py` | Unchanged. |
+## Safety properties (each covered by tests)
 
-Later milestones replace the dicts in `service.py` with a PostgreSQL repository.
+- The LLM never executes anything: it returns JSON, and Python decides what runs.
+- Tools come from an allow-list, and arguments are validated twice (when planning and when executing).
+- The LLM can't choose the Telegram recipient (`TELEGRAM_CHAT_ID` only), and can't write a message the summary didn't produce.
+- What you approve is exactly what's sent. A second approve gets 409, and no send is retried automatically.
+- A timeout or dropped connection after sending reports `delivery_unknown`, never "not sent".
+- Fetched content goes to the LLM fenced as untrusted data. Citations are limited to URLs that really came from the search.
+- Secrets stay on the server. Provider errors are mapped to safe messages, and the httpx request log is silenced because Telegram's URL contains the token.
+
+## Tests
+
+```bash
+pytest                       # 153 tests, no network (an autouse fixture blocks sockets)
+LIVE_TESTS=1 pytest -m live  # optional: real Open-Meteo, Tavily and LLM (see tests/live/README.md)
+```
+
+The live-mode API tests (`tests/test_live_mode.py`) run the whole stack through HTTP, using a scripted LLM and `httpx.MockTransport` for the providers.
+
+## Limitations
+
+- **Memory only:** a restart loses conversations, runs and pending approvals.
+- **Single worker:** with `uvicorn --workers N`, a stream or approval can reach a process that doesn't own the run. Moving state to PostgreSQL (plus a pub/sub for events) is the planned fix.
+- **"Today" is the server's local date,** used to resolve "tomorrow" and weekdays. A hosted version should take the user's time zone from the browser.
+- **No authentication or rate limiting yet.** CORS is the only restriction.
+- **Free LLM tiers rate-limit quickly** (about 8k tokens/minute on Groq); a full run uses about 3.5k.
+- **Plans have a fixed shape:** data steps, then one summary, then an optional send. That keeps validation simple; chained data steps (search → search) would need more binding rules.

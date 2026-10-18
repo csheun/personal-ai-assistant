@@ -284,3 +284,51 @@ def test_demo_flow_really_sends_after_approval_when_telegram_is_configured() -> 
     assert again.status_code == 409 and len(sent) == 1  # a second approve can't send twice
     assert final["tasks"][2]["result"]["output"]["message_id"] == 7
     assert "Sent to Telegram (Saved Messages)" in final["summary"]
+
+
+def test_cancel_stops_real_tool_calls_in_flight() -> None:
+    import asyncio
+
+    llm, _ = fake_llm(plan(WEATHER, SEARCH, task("t3", "summarize", {}, ["t1", "t2"])))
+
+    async def slow(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(2)  # providers hang; cancel must not wait for them
+        return httpx.Response(200, json={"results": [SINGAPORE]})
+
+    config = Settings(_env_file=None, mock_mode=False, groq_api_key="t", web_search_api_key="k")  # type: ignore[call-arg]
+    with TestClient(create_app(config, llm=llm, http_transport=httpx.MockTransport(slow))) as client:
+        run_id = chat(client, "weather and news")["run"]["id"]
+        client.post(f"/api/workflows/{run_id}/start")
+        wait_for_status(client, run_id, "running")
+        cancelled = client.post(f"/api/workflows/{run_id}/cancel").json()
+        assert [t["status"] for t in cancelled["tasks"]] == ["cancelled", "cancelled", "cancelled"]
+        events = read_sse(client, f"/api/workflows/{run_id}/events")
+    assert events[-1]["type"] == "run.cancelled"
+    assert not any(e["type"] == "task.completed" for e in events)
+
+
+def test_simultaneous_live_runs_stay_isolated() -> None:
+    llm, _ = fake_llm(
+        plan(WEATHER, task("t2", "summarize", {}, ["t1"])),
+        plan(SEARCH, task("t3", "summarize", {}, ["t2"]), task("t4", "telegram_send_message", {}, ["t3"])),
+        synthesis("Same text."),
+        synthesis("Same text."),
+    )
+    transport, _ = providers()
+    config = Settings(_env_file=None, mock_mode=False, groq_api_key="t", web_search_api_key="k", sse_heartbeat_seconds=0.05)  # type: ignore[call-arg]
+    with TestClient(create_app(config, llm=llm, http_transport=transport)) as client:
+        weather = chat(client, "weather")["run"]["id"]
+        news = chat(client, "news to telegram")["run"]["id"]
+        client.post(f"/api/workflows/{weather}/start")
+        client.post(f"/api/workflows/{news}/start")
+        waiting = wait_for_status(client, news, "waiting_for_approval")
+        client.post(f"/api/workflows/{news}/cancel")
+        done = wait_for_status(client, weather, "completed")
+        weather_events = read_sse(client, f"/api/workflows/{weather}/events")
+        news_run = client.get(f"/api/workflows/{news}").json()
+        # An approval id from one run is unknown to another.
+        cross = client.post(f"/api/workflows/{weather}/approve", json={"approval_id": waiting["approvals"][0]["id"], "decision": "approve"})
+
+    assert done["status"] == "completed" and news_run["status"] == "cancelled"
+    assert {e["run_id"] for e in weather_events} == {weather} and weather_events[0]["id"] == 1
+    assert cross.status_code == 404
