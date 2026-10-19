@@ -118,3 +118,25 @@ def test_llm_schemas_mark_mocked_tools(registry: ToolRegistry) -> None:
     assert {"get_weather", "web_search", "summarize", "telegram_send_message"} <= set(schemas)
     assert schemas["get_weather"]["description"].startswith("[MOCKED DATA]")
     assert schemas["get_weather"]["parameters"]["required"] == ["city"]
+
+
+async def test_expected_failures_keep_their_safe_message() -> None:
+    from app.tools import ToolFailure
+
+    async def missing(_: _EchoIn) -> _EchoOut:
+        raise ToolFailure("not_found", "Couldn't find a place called 'Atlantis'.")
+
+    registry = ToolRegistry()
+    registry.register(Tool("lookup", "x", _EchoIn, _EchoOut, missing))
+    result = await registry.execute("lookup", {"value": "x"})
+    assert (result.error.code, result.error.message) == ("not_found", "Couldn't find a place called 'Atlantis'.")
+
+
+async def test_per_tool_timeout_overrides_the_default() -> None:
+    async def slow(args: _EchoIn) -> _EchoOut:
+        await asyncio.sleep(0.05)
+        return _EchoOut(value=args.value)
+
+    registry = ToolRegistry(timeout_seconds=0.01)
+    registry.register(Tool("patient", "x", _EchoIn, _EchoOut, slow, timeout_seconds=1.0))
+    assert (await registry.execute("patient", {"value": "x"})).ok

@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.dependencies import Workflows
-from app.workflows.models import ChatMessage, Conversation, UsageStats
+from app.workflows.models import Capabilities, ChatMessage, Conversation, UsageStats
 
 router = APIRouter(tags=["conversations"])
 
@@ -14,6 +14,12 @@ async def list_conversations(workflows: Workflows) -> list[Conversation]:
 @router.get("/conversations/{conversation_id}/messages", response_model=list[ChatMessage])
 async def list_messages(conversation_id: str, workflows: Workflows) -> list[ChatMessage]:
     return workflows.list_messages(conversation_id)
+
+
+@router.get("/capabilities", response_model=Capabilities)
+async def capabilities(workflows: Workflows) -> Capabilities:
+    """Mode (mock/live), model name and available tools. Never includes credentials."""
+    return workflows.capabilities()
 
 
 @router.get("/stats", response_model=UsageStats)

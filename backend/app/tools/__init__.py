@@ -1,4 +1,4 @@
-from app.tools.base import Tool, ToolError, ToolInput, ToolRegistry, ToolResult
+from app.tools.base import Tool, ToolError, ToolFailure, ToolInput, ToolRegistry, ToolResult
 from app.tools.calendar import calendar_tool
 from app.tools.documents import document_tool
 from app.tools.gmail import gmail_tool
@@ -26,4 +26,4 @@ def build_default_registry(timeout_seconds: float = 10.0, mock_latency_scale: fl
     return registry
 
 
-__all__ = ["Tool", "ToolError", "ToolInput", "ToolRegistry", "ToolResult", "build_default_registry"]
+__all__ = ["Tool", "ToolError", "ToolFailure", "ToolInput", "ToolRegistry", "ToolResult", "build_default_registry"]

@@ -78,9 +78,7 @@
             "id": "t5",
             "title": "Send the summary to Telegram",
             "tool_name": "telegram_send_message",
-            "arguments": {
-              "chat": "Me (Saved Messages)"
-            },
+            "arguments": {},
             "depends_on": [
               "t4"
             ],
@@ -98,7 +96,8 @@
         "finished_at": null,
         "summary": null,
         "approvals": [],
-        "last_event_id": 0
+        "last_event_id": 0,
+        "planning": null
       },
       "events": [
         {
@@ -253,9 +252,11 @@
             "result": {
               "tool_name": "summarize",
               "arguments": {
+                "instruction": "Summarize the results for the user.",
                 "sources": [
                   {
                     "tool_name": "get_weather",
+                    "title": "Check Singapore weather",
                     "output": {
                       "city": "Singapore",
                       "temperature": 23.0,
@@ -269,6 +270,7 @@
                   },
                   {
                     "tool_name": "calendar_list_events",
+                    "title": "Read today's calendar",
                     "output": {
                       "date": "today",
                       "events": [
@@ -290,6 +292,7 @@
                   },
                   {
                     "tool_name": "gmail_search",
+                    "title": "Scan unread email",
                     "output": {
                       "query": "is:unread newer_than:1d",
                       "messages": [
@@ -312,6 +315,8 @@
               "ok": true,
               "output": {
                 "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.",
+                "sources": [],
+                "usage": null,
                 "mocked": true
               },
               "error": null,
@@ -384,7 +389,6 @@
             "result": {
               "tool_name": "telegram_send_message",
               "arguments": {
-                "chat": "Me (Saved Messages)",
                 "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya."
               },
               "ok": true,
@@ -392,7 +396,9 @@
                 "chat": "Me (Saved Messages)",
                 "characters": 132,
                 "delivered": false,
-                "note": "Mock mode: no message was sent to Telegram.",
+                "message_id": null,
+                "sent_at": null,
+                "note": "Simulated: no message was sent to Telegram.",
                 "mocked": true
               },
               "error": null,
@@ -408,7 +414,7 @@
           "task_id": null,
           "type": "run.completed",
           "data": {
-            "summary": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.\n\nYou approved the Telegram message. In mock mode nothing was actually sent."
+            "summary": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.\n\nYou approved the Telegram message. Telegram is simulated here, so nothing was actually sent."
           }
         }
       ],
@@ -553,9 +559,11 @@
             "result": {
               "tool_name": "summarize",
               "arguments": {
+                "instruction": "Summarize the results for the user.",
                 "sources": [
                   {
                     "tool_name": "get_weather",
+                    "title": "Check Singapore weather",
                     "output": {
                       "city": "Singapore",
                       "temperature": 23.0,
@@ -569,6 +577,7 @@
                   },
                   {
                     "tool_name": "calendar_list_events",
+                    "title": "Read today's calendar",
                     "output": {
                       "date": "today",
                       "events": [
@@ -590,6 +599,7 @@
                   },
                   {
                     "tool_name": "gmail_search",
+                    "title": "Scan unread email",
                     "output": {
                       "query": "is:unread newer_than:1d",
                       "messages": [
@@ -612,6 +622,8 @@
               "ok": true,
               "output": {
                 "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.",
+                "sources": [],
+                "usage": null,
                 "mocked": true
               },
               "error": null,
@@ -623,9 +635,7 @@
             "id": "t5",
             "title": "Send the summary to Telegram",
             "tool_name": "telegram_send_message",
-            "arguments": {
-              "chat": "Me (Saved Messages)"
-            },
+            "arguments": {},
             "depends_on": [
               "t4"
             ],
@@ -637,7 +647,6 @@
             "result": {
               "tool_name": "telegram_send_message",
               "arguments": {
-                "chat": "Me (Saved Messages)",
                 "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya."
               },
               "ok": true,
@@ -645,7 +654,9 @@
                 "chat": "Me (Saved Messages)",
                 "characters": 132,
                 "delivered": false,
-                "note": "Mock mode: no message was sent to Telegram.",
+                "message_id": null,
+                "sent_at": null,
+                "note": "Simulated: no message was sent to Telegram.",
                 "mocked": true
               },
               "error": null,
@@ -657,7 +668,7 @@
         "created_at": "2026-01-01T08:00:00.100000Z",
         "started_at": "2026-01-01T08:00:00.200000Z",
         "finished_at": "2026-01-01T08:00:02.700000Z",
-        "summary": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.\n\nYou approved the Telegram message. In mock mode nothing was actually sent.",
+        "summary": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.\n\nYou approved the Telegram message. Telegram is simulated here, so nothing was actually sent.",
         "approvals": [
           {
             "id": "apr_1",
@@ -674,7 +685,8 @@
             "resolved_at": "2026-01-01T08:00:02.100000Z"
           }
         ],
-        "last_event_id": 14
+        "last_event_id": 14,
+        "planning": null
       }
     },
     {
@@ -755,9 +767,7 @@
             "id": "t5",
             "title": "Send the summary to Telegram",
             "tool_name": "telegram_send_message",
-            "arguments": {
-              "chat": "Me (Saved Messages)"
-            },
+            "arguments": {},
             "depends_on": [
               "t4"
             ],
@@ -775,7 +785,8 @@
         "finished_at": null,
         "summary": null,
         "approvals": [],
-        "last_event_id": 0
+        "last_event_id": 0,
+        "planning": null
       },
       "events": [
         {
@@ -930,9 +941,11 @@
             "result": {
               "tool_name": "summarize",
               "arguments": {
+                "instruction": "Summarize the results for the user.",
                 "sources": [
                   {
                     "tool_name": "get_weather",
+                    "title": "Check Singapore weather",
                     "output": {
                       "city": "Singapore",
                       "temperature": 23.0,
@@ -946,6 +959,7 @@
                   },
                   {
                     "tool_name": "calendar_list_events",
+                    "title": "Read today's calendar",
                     "output": {
                       "date": "today",
                       "events": [
@@ -967,6 +981,7 @@
                   },
                   {
                     "tool_name": "gmail_search",
+                    "title": "Scan unread email",
                     "output": {
                       "query": "is:unread newer_than:1d",
                       "messages": [
@@ -989,6 +1004,8 @@
               "ok": true,
               "output": {
                 "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.",
+                "sources": [],
+                "usage": null,
                 "mocked": true
               },
               "error": null,
@@ -1205,9 +1222,11 @@
             "result": {
               "tool_name": "summarize",
               "arguments": {
+                "instruction": "Summarize the results for the user.",
                 "sources": [
                   {
                     "tool_name": "get_weather",
+                    "title": "Check Singapore weather",
                     "output": {
                       "city": "Singapore",
                       "temperature": 23.0,
@@ -1221,6 +1240,7 @@
                   },
                   {
                     "tool_name": "calendar_list_events",
+                    "title": "Read today's calendar",
                     "output": {
                       "date": "today",
                       "events": [
@@ -1242,6 +1262,7 @@
                   },
                   {
                     "tool_name": "gmail_search",
+                    "title": "Scan unread email",
                     "output": {
                       "query": "is:unread newer_than:1d",
                       "messages": [
@@ -1264,6 +1285,8 @@
               "ok": true,
               "output": {
                 "text": "Singapore: 23°C, sunny. 3 events today, starting with Team standup at 09:30. 2 new emails, including \"Lunch — still on?\" from Priya.",
+                "sources": [],
+                "usage": null,
                 "mocked": true
               },
               "error": null,
@@ -1275,9 +1298,7 @@
             "id": "t5",
             "title": "Send the summary to Telegram",
             "tool_name": "telegram_send_message",
-            "arguments": {
-              "chat": "Me (Saved Messages)"
-            },
+            "arguments": {},
             "depends_on": [
               "t4"
             ],
@@ -1310,7 +1331,8 @@
             "resolved_at": "2026-01-01T08:00:02.100000Z"
           }
         ],
-        "last_event_id": 13
+        "last_event_id": 13,
+        "planning": null
       }
     },
     {
@@ -1391,9 +1413,7 @@
             "id": "t5",
             "title": "Send the summary to Telegram",
             "tool_name": "telegram_send_message",
-            "arguments": {
-              "chat": "Me (Saved Messages)"
-            },
+            "arguments": {},
             "depends_on": [
               "t4"
             ],
@@ -1411,7 +1431,8 @@
         "finished_at": null,
         "summary": null,
         "approvals": [],
-        "last_event_id": 0
+        "last_event_id": 0,
+        "planning": null
       },
       "events": [
         {
@@ -1571,9 +1592,7 @@
             "id": "t5",
             "title": "Send the summary to Telegram",
             "tool_name": "telegram_send_message",
-            "arguments": {
-              "chat": "Me (Saved Messages)"
-            },
+            "arguments": {},
             "depends_on": [
               "t4"
             ],
@@ -1591,7 +1610,8 @@
         "finished_at": "2026-01-01T08:00:01.100000Z",
         "summary": null,
         "approvals": [],
-        "last_event_id": 10
+        "last_event_id": 10,
+        "planning": null
       }
     },
     {
@@ -1640,7 +1660,8 @@
         "finished_at": null,
         "summary": null,
         "approvals": [],
-        "last_event_id": 0
+        "last_event_id": 0,
+        "planning": null
       },
       "events": [
         {
@@ -1764,7 +1785,8 @@
         "finished_at": "2026-01-01T08:00:00.800000Z",
         "summary": null,
         "approvals": [],
-        "last_event_id": 5
+        "last_event_id": 5,
+        "planning": null
       }
     }
   ]

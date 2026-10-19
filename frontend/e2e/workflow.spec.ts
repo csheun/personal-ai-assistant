@@ -94,3 +94,10 @@ test("switches theme and remembers it", async ({ page }) => {
   await page.reload();
   await expect(page.locator("html")).toHaveClass(/dark/);
 });
+
+test("integrations show their real status from the backend", async ({ page }) => {
+  await page.goto("/");
+  const weather = page.getByTestId("integration-get_weather");
+  await expect(weather).toContainText("Simulated");
+  await expect(page.getByTestId("integration-telegram_send_message")).toContainText("asks first");
+});

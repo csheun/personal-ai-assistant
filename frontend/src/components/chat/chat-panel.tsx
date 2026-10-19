@@ -18,7 +18,8 @@ export function ChatPanel({
   onOpenSidebar: () => void;
   onOpenRun: (runId: string, focusApproval?: boolean) => void;
 }) {
-  const { state, sendMessage, dismissSendError, retryMessages, startRun } = useAssistant();
+  const { state, capabilities, sendMessage, dismissSendError, retryMessages, startRun } = useAssistant();
+  const live = capabilities?.mode === "live";
   const id = state.activeConversationId;
   const conversation = state.conversations.find((c) => c.id === id) ?? null;
   const messages = id ? (state.messages[id] ?? []) : [];
@@ -51,7 +52,7 @@ export function ChatPanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6" aria-live="polite" aria-busy={status === "loading"}>
         {showEmpty ? (
-          <EmptyState onPick={sendMessage} disabled={!!state.pending} />
+          <EmptyState onPick={sendMessage} disabled={!!state.pending} live={live} />
         ) : (
           <ol className="mx-auto w-full max-w-3xl space-y-6 py-6" aria-label="Messages">
             {status === "loading" && (
@@ -112,7 +113,7 @@ export function ChatPanel({
       </div>
 
       <div className="shrink-0 px-3 pb-3 pt-2 sm:px-6 sm:pb-5">
-        <Composer onSend={sendMessage} disabled={!!state.pending} />
+        <Composer onSend={sendMessage} disabled={!!state.pending} live={live} />
       </div>
     </div>
   );

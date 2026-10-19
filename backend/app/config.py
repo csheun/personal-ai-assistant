@@ -13,6 +13,7 @@ from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LLMProvider = Literal["groq", "openai", "anthropic"]
+StructuredOutputMethod = Literal["json_schema", "function_calling", "json_mode"]
 
 # Anchor to backend/.env so the app finds it regardless of the directory it is started from.
 ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
@@ -24,19 +25,49 @@ class Settings(BaseSettings):
     app_name: str = "Personal AI Assistant"
     log_level: str = "INFO"
 
-    # --- LLM ---
+    # --- Mode ---
+    # true: keyword planner + simulated tools (no keys needed). false: real LLM and providers.
+    mock_mode: bool = True
+
+    # --- LLM (used when MOCK_MODE=false) ---
     llm_provider: LLMProvider = "groq"
     llm_model: str = "openai/gpt-oss-120b"
-    llm_api_key: SecretStr | None = None
+    # One key per provider, so switching is just LLM_PROVIDER + LLM_MODEL. Only the selected one is required.
+    groq_api_key: SecretStr | None = None
+    openai_api_key: SecretStr | None = None
+    anthropic_api_key: SecretStr | None = None
     # Optional: point the OpenAI provider at any OpenAI-compatible server (Ollama, vLLM, ...).
     llm_base_url: str | None = None
     llm_temperature: float = Field(default=0.0, ge=0.0, le=2.0)
-    llm_timeout_seconds: float = Field(default=60.0, gt=0)
+    # Hard limit per LLM call, including the provider's own retries.
+    llm_timeout_seconds: float = Field(default=45.0, gt=0)
+    # Cap on generated tokens per call (cost and runaway-output protection).
+    llm_max_tokens: int = Field(default=2048, ge=64, le=16_384)
+    # Provider-level retries for transient errors (rate limits, 5xx). Kept low: each retry adds latency.
+    llm_max_retries: int = Field(default=1, ge=0, le=5)
+    # How structured output is requested. Unset = the provider's most reliable mode
+    # (json_schema for groq/openai, function_calling for anthropic).
+    llm_structured_output: StructuredOutputMethod | None = None
+    # Planner: total LLM attempts per request (1 draft + repairs after validation errors).
+    planner_max_attempts: int = Field(default=2, ge=1, le=4)
+    # Validation limits for LLM-generated plans.
+    planner_max_tasks: int = Field(default=8, ge=2, le=20)
+    planner_max_depth: int = Field(default=4, ge=2, le=8)
 
-    # --- Agent ---
-    # Max LLM<->tool round trips per request; protects against runaway loops.
-    agent_max_iterations: int = Field(default=5, ge=1, le=20)
     tool_timeout_seconds: float = Field(default=10.0, gt=0)
+
+    # --- External tools (used when MOCK_MODE=false) ---
+    # Weather: Open-Meteo (https://open-meteo.com), keyless. Web search: Tavily (https://tavily.com).
+    web_search_api_key: SecretStr | None = None
+    weather_timeout_seconds: float = Field(default=8.0, gt=0)
+    # Telegram: both token and chat id are needed to really send; otherwise sending is simulated.
+    telegram_bot_token: SecretStr | None = None
+    # The ONLY destination messages can go to. Never taken from the LLM or the request.
+    telegram_chat_id: str | None = None
+    # How the destination is shown on the approval card, e.g. "Saved Messages".
+    telegram_chat_label: str = "your Telegram chat"
+    telegram_timeout_seconds: float = Field(default=10.0, gt=0)
+    web_search_timeout_seconds: float = Field(default=10.0, gt=0)
 
     # --- Workflows (Milestone 3: all tools mocked) ---
     # Multiplies each mocked tool's simulated latency. 0 = instant, 1 = realistic demo pacing.

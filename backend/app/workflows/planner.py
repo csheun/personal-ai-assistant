@@ -1,31 +1,21 @@
-"""MOCK planner: keyword rules that turn a message into a fixed-shape plan.
+"""MOCK planner (MOCK_MODE=true): keyword rules that turn a message into a fixed-shape plan.
 
 Same rules as the frontend's demo planner, so both modes behave identically.
-Milestone 4 replaces this module with an LLM-backed planner that returns the same `Plan`.
+The LLM planner (llm_planner.py) implements the same `Planner` interface.
 """
 
 import re
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 from app.tools import ToolRegistry
 from app.workflows.errors import AssistantUnavailable
-from app.workflows.models import ToolName, WorkflowTask
+from app.workflows.models import PlanningInfo, ToolName, WorkflowTask
+from app.workflows.plans import DirectReply, Plan
 
-
-@dataclass(frozen=True)
-class Plan:
-    reply: str
-    goal: str
-    tasks: list[WorkflowTask]
-    # Mock-only failure injection, triggered by "simulate failure" in the message.
-    fail_task_ids: frozenset[str] = field(default_factory=frozenset)
-
-
-@dataclass(frozen=True)
-class DirectReply:
-    reply: str
+_MOCK_PLANNING = PlanningInfo(planner="mock", attempts=0, duration_ms=0)
 
 
 @dataclass(frozen=True)
@@ -82,7 +72,14 @@ class MockPlanner:
     def __init__(self, registry: ToolRegistry) -> None:
         self._registry = registry
 
-    def plan(self, message: str) -> Plan | DirectReply:
+    async def plan(self, message: str, *, today: date | None = None) -> Plan | DirectReply:
+        outcome = self.build(message)
+        if isinstance(outcome, Plan):
+            return Plan(outcome.reply, outcome.goal, outcome.tasks, outcome.fail_task_ids, _MOCK_PLANNING)
+        return DirectReply(outcome.reply, _MOCK_PLANNING)
+
+    def build(self, message: str) -> Plan | DirectReply:
+        """The keyword rules, synchronously (handy for tests and fixtures)."""
         if re.search(r"simulate error", message, re.I):
             # Mock-only: lets you exercise the client's error handling.
             raise AssistantUnavailable("The assistant is unavailable right now. Try again in a moment.")
@@ -105,7 +102,7 @@ class MockPlanner:
                     f"t{len(tasks) + 1}",
                     "telegram_send_message",
                     "Send the summary to Telegram",
-                    {"chat": "Me (Saved Messages)"},
+                    {},
                     depends_on=[summary_id],
                 )
             )

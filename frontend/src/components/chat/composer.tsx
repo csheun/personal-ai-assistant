@@ -5,7 +5,7 @@ import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 const MAX = 4000;
 
-export function Composer({ onSend, disabled }: { onSend: (text: string) => void; disabled: boolean }) {
+export function Composer({ onSend, disabled, live }: { onSend: (text: string) => void; disabled: boolean; live: boolean }) {
   const [text, setText] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
   const trimmed = text.trim();
@@ -55,7 +55,7 @@ export function Composer({ onSend, disabled }: { onSend: (text: string) => void;
       <p id="composer-hint" className={`mt-1.5 px-2 text-[12px] ${tooLong ? "text-fail" : "text-faint"}`}>
         {tooLong
           ? `${text.length - MAX} characters over the ${MAX} limit`
-          : "Enter to send, Shift+Enter for a new line. Responses are simulated."}
+          : `Enter to send, Shift+Enter for a new line. ${live ? "Uses a live AI model and live data." : "Responses are simulated."}`}
       </p>
     </form>
   );

@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.tools import ToolError, ToolRegistry, ToolResult
+from app.tools.base import ActionPreview
 from app.workflows.bindings import resolve_arguments
 from app.workflows.errors import NotFound, WorkflowConflict
 from app.workflows.events import EventLog
@@ -75,6 +76,9 @@ class WorkflowRunner:
         self._new_id = new_id
         self.log = EventLog()
         self._jobs: dict[str, asyncio.Task[None]] = {}
+        self._spawned: set[str] = set()
+        # Arguments frozen when an approval is requested: approving runs exactly what was shown.
+        self._approved_arguments: dict[str, dict[str, Any]] = {}
         self._done = asyncio.Event()
 
     @property
@@ -149,30 +153,72 @@ class WorkflowRunner:
             self._finish()
 
     def _spawn(self, task: WorkflowTask) -> None:
+        # At most one execution per task, whichever path asks (scheduling or an approval).
+        if task.id in self._spawned:
+            logger.warning("Ignoring a second start of %s/%s", self._run.id, task.id)
+            return
+        self._spawned.add(task.id)
         self._emit(TaskStarted, task_id=task.id)
         self._jobs[task.id] = asyncio.create_task(self._execute(task.id), name=f"{self._run.id}:{task.id}")
 
     def _request_approval(self, task: WorkflowTask) -> None:
+        # The tool describes its own action from validated input, so the card shows exactly what will run.
+        tool = self._tools.get(task.tool_name)
         arguments = resolve_arguments(task, self._upstream(task))
+        if tool is None or tool.describe_action is None:
+            preview = ActionPreview(action=f"Run {task.title}", destination=task.tool_name, body=str(arguments))
+        else:
+            preview = tool.describe_action(tool.input_model.model_validate(arguments))
         approval = ApprovalRequest(
             id=self._new_id("apr"),
             run_id=self._run.id,
             task_id=task.id,
             tool_name=task.tool_name,
-            action=f"Send a Telegram message to {arguments.get('chat')}",
-            preview=ApprovalPreview(
-                destination=f"Telegram · {arguments.get('chat')}", body=str(arguments.get("text", ""))
-            ),
+            action=preview.action,
+            preview=ApprovalPreview(destination=preview.destination, body=preview.body),
             status="pending",
             created_at=self._clock(),
         )
+        self._approved_arguments[task.id] = arguments
         self._emit(ApprovalRequested, task_id=task.id, data=ApprovalData(approval=approval))
+
+    def _needs_approval(self, task: WorkflowTask) -> bool:
+        tool = self._tools.get(task.tool_name)
+        return task.requires_approval or (tool is not None and tool.risk == "external_write")
+
+    def _arguments_for(self, task: WorkflowTask) -> dict[str, Any] | None:
+        """Arguments to run with, or None if the task must not run.
+
+        Side-effecting tasks run only with an *approved* approval for this exact task, and only
+        with the arguments frozen when that approval was requested. This check lives here, at the
+        last moment before execution, so no other code path can skip it.
+        """
+        if not self._needs_approval(task):
+            return resolve_arguments(task, self._upstream(task))
+        approved = any(a.task_id == task.id and a.status == "approved" for a in self._run.approvals)
+        if not approved or task.id not in self._approved_arguments:
+            return None
+        return self._approved_arguments[task.id]
 
     async def _execute(self, task_id: str) -> None:
         task = self._task(task_id)
         started = self._clock()
+        arguments = self._arguments_for(task)
+        if arguments is None:
+            logger.error("Refused to run %s/%s without approval", self._run.id, task_id)
+            self._jobs.pop(task_id, None)
+            refused = ToolResult(
+                tool_name=task.tool_name,
+                arguments={},
+                ok=False,
+                error=ToolError(code="execution_failed", message="Not run: this action needs your approval first."),
+            )
+            reason = "Not run: this action needs your approval first."
+            self._emit(TaskFailed, task_id=task_id, data=TaskFailedData(result=refused, duration_ms=0, reason=reason))
+            self._advance()
+            return
         try:
-            result = await self._tools.execute(task.tool_name, resolve_arguments(task, self._upstream(task)))
+            result = await self._tools.execute(task.tool_name, arguments)
         except asyncio.CancelledError:
             return  # cancel() already emitted the events
         except Exception:  # the registry contains tool errors; this is a bug guard
@@ -253,6 +299,9 @@ def _final_summary(run: WorkflowRun) -> str:
     telegram = next((t for t in run.tasks if t.tool_name == "telegram_send_message"), None)
     if telegram is None:
         return text
-    if telegram.status == "completed":
-        return f"{text}\n\nYou approved the Telegram message. In mock mode nothing was actually sent."
-    return f"{text}\n\nI didn't send anything to Telegram because you rejected the message."
+    if telegram.status != "completed" or telegram.result is None:
+        return f"{text}\n\nI didn't send anything to Telegram because you rejected the message."
+    sent = telegram.result.output or {}
+    if sent.get("delivered"):
+        return f"{text}\n\nSent to Telegram ({sent.get('chat', 'your chat')})."
+    return f"{text}\n\nYou approved the Telegram message. Telegram is simulated here, so nothing was actually sent."

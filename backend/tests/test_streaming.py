@@ -12,13 +12,13 @@ def make_service(scale: float = 0.01) -> WorkflowService:
     return WorkflowService(tools, MockPlanner(tools))
 
 
-def new_run(service: WorkflowService) -> str:
-    return service.send_message(SendMessageRequest(message=BRIEFING)).run.id
+async def new_run(service: WorkflowService) -> str:
+    return (await service.send_message(SendMessageRequest(message=BRIEFING))).run.id
 
 
 async def test_live_stream_delivers_transitions_in_order() -> None:
     service = make_service()
-    run_id = new_run(service)
+    run_id = await new_run(service)
     received = []
 
     async def consume() -> None:
@@ -40,7 +40,7 @@ async def test_live_stream_delivers_transitions_in_order() -> None:
 
 async def test_disconnecting_does_not_stop_the_run() -> None:
     service = make_service()
-    run_id = new_run(service)
+    run_id = await new_run(service)
     service.start(run_id)
 
     stream = service.follow(run_id)
@@ -54,7 +54,7 @@ async def test_disconnecting_does_not_stop_the_run() -> None:
 
 async def test_many_consumers_get_the_same_events() -> None:
     service = make_service()
-    run_id = new_run(service)
+    run_id = await new_run(service)
 
     async def collect() -> list[int]:
         return [e.id async for e in service.follow(run_id) if e]
@@ -71,7 +71,7 @@ async def test_many_consumers_get_the_same_events() -> None:
 
 async def test_idle_stream_sends_heartbeats() -> None:
     service = make_service()
-    run_id = new_run(service)
+    run_id = await new_run(service)
     service.start(run_id)
     await wait_for(lambda: service.get_run(run_id).status == "waiting_for_approval")
 
@@ -82,7 +82,7 @@ async def test_idle_stream_sends_heartbeats() -> None:
 
 async def test_completed_runs_stay_retrievable() -> None:
     service = make_service()
-    run_id = new_run(service)
+    run_id = await new_run(service)
     service.start(run_id)
     service.cancel(run_id)
     snapshot = service.get_run(run_id)
@@ -93,7 +93,7 @@ async def test_completed_runs_stay_retrievable() -> None:
 
 async def test_shutdown_cancels_unfinished_runs() -> None:
     service = make_service(scale=1.0)
-    run_id = new_run(service)
+    run_id = await new_run(service)
     service.start(run_id)
     await service.shutdown()
     assert service.get_run(run_id).status == "cancelled"

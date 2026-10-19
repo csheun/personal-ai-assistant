@@ -5,7 +5,8 @@ import { Hand, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RUN_STATUS, StatusPill, TASK_STATUS } from "@/components/ui/status";
 import type { WorkflowRun } from "@/lib/api/types";
-import { failureReason, pendingApproval, progress } from "@/lib/workflow/metrics";
+import { failureReason, pendingApproval, progress, summarySources } from "@/lib/workflow/metrics";
+import { SourceList } from "@/components/workflow/source-list";
 
 const SEGMENT: Record<string, string> = {
   pending: "bg-line",
@@ -62,7 +63,12 @@ export function RunCard({
           Waiting for you to approve the Telegram message.
         </p>
       )}
-      {run.status === "completed" && run.summary && <p className="mt-3 whitespace-pre-wrap text-sm">{run.summary}</p>}
+      {run.status === "completed" && run.summary && (
+        <>
+          <p className="mt-3 whitespace-pre-wrap text-sm">{run.summary}</p>
+          <SourceList sources={summarySources(run)} compact />
+        </>
+      )}
       {failure && <p className="mt-3 text-sm text-fail">{failure}</p>}
 
       <div className="mt-3 flex flex-wrap gap-2">

@@ -82,7 +82,7 @@ test("the browser only talks to the local frontend and backend", async ({ page }
 test("the sidebar shows when the backend goes away and comes back", async ({ page }) => {
   await page.goto("/");
   const status = page.getByRole("navigation", { name: "Conversations" }).getByRole("status");
-  await expect(status).toHaveText("Backend connected, tools mocked");
+  await expect(status).toHaveText("Backend connected, demo planner");
 
   // Cut the browser off from the API (as if the server were stopped).
   await page.route("http://localhost:8100/**", (route) => route.abort("connectionrefused"));
@@ -91,5 +91,5 @@ test("the sidebar shows when the backend goes away and comes back", async ({ pag
   await expect(status).toHaveText("Can't reach the backend. Retrying…");
 
   await page.unroute("http://localhost:8100/**");
-  await expect(status).toHaveText("Backend connected, tools mocked", { timeout: 10_000 });
+  await expect(status).toHaveText("Backend connected, demo planner", { timeout: 10_000 });
 });

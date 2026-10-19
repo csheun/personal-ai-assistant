@@ -118,3 +118,40 @@ async def test_events_replay_to_the_same_snapshot() -> None:
         replayed = apply_event(replayed, event)
     assert replayed == final
     assert final.last_event_id == len(events)
+
+
+async def test_a_task_is_never_started_twice() -> None:
+    runner = make_runner()
+    runner.start()
+    await wait_for(lambda: runner.run.status == "waiting_for_approval")
+    runner._spawn(runner._task("t1"))  # a buggy second start of a finished task
+    started = [e for e in runner.log.events if e.type == "task.started" and e.task_id == "t1"]
+    assert len(started) == 1
+    runner.cancel()
+
+
+async def test_side_effect_never_runs_without_approval_even_if_started_directly() -> None:
+    runner = make_runner()
+    runner.start()
+    await wait_for(lambda: runner.run.status == "waiting_for_approval")
+
+    runner._spawn(runner._task("t5"))  # simulate a bug that bypasses the approval flow
+    await wait_for(lambda: runner.run.status in {"failed", "completed"})
+
+    telegram = runner.run.tasks[4]
+    assert telegram.status == "failed" and "needs your approval" in telegram.status_reason
+    assert telegram.result.output is None  # the tool was never executed
+
+
+async def test_approval_sends_exactly_the_frozen_preview_text() -> None:
+    runner = make_runner()
+    runner.start()
+    await wait_for(lambda: runner.run.status == "waiting_for_approval")
+    approval = runner.run.approvals[0]
+    # Even if upstream state changed after the preview, the approved text is what runs.
+    runner._run = runner._run.model_copy(
+        update={"tasks": [t.model_copy(update={"result": None}) if t.id == "t4" else t for t in runner._run.tasks]}
+    )
+    runner.resolve_approval(approval.id, "approve")
+    run = await runner.wait_until_finished()
+    assert run.tasks[4].result.arguments["text"] == approval.preview.body

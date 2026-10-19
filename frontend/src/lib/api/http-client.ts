@@ -7,6 +7,7 @@ import {
   ApiError,
   type ApprovalDecision,
   type ApprovalRequest,
+  type Capabilities,
   type ChatMessage,
   type Conversation,
   type ID,
@@ -78,6 +79,10 @@ export class HttpWorkflowClient implements WorkflowClient {
 
   getStats(): Promise<UsageStats> {
     return this.request("/api/stats");
+  }
+
+  getCapabilities(): Promise<Capabilities> {
+    return this.request("/api/capabilities");
   }
 
   /**

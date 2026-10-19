@@ -14,7 +14,13 @@ def resolve_arguments(task: WorkflowTask, upstream: list[WorkflowTask]) -> dict[
     outputs = [(t.tool_name, (t.result.output if t.result else None) or {}) for t in upstream]
     match task.tool_name:
         case "summarize":
-            return {**task.arguments, "sources": [{"tool_name": name, "output": out} for name, out in outputs]}
+            return {
+                **task.arguments,
+                "sources": [
+                    {"tool_name": t.tool_name, "title": t.title, "output": (t.result.output if t.result else None) or {}}
+                    for t in upstream
+                ],
+            }
         case "telegram_send_message":
             text = next((out.get("text") for name, out in outputs if name == "summarize"), None)
             return {**task.arguments, "text": text or ""}

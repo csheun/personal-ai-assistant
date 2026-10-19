@@ -28,6 +28,15 @@ InputT = TypeVar("InputT", bound=BaseModel)
 OutputT = TypeVar("OutputT", bound=BaseModel)
 
 
+@dataclass(frozen=True)
+class ActionPreview:
+    """What the user is asked to approve before an external_write tool runs."""
+
+    action: str  # e.g. "Send a Telegram message to Me"
+    destination: str  # e.g. "Telegram · Me"
+    body: str  # exactly what will be sent
+
+
 class ToolInput(BaseModel):
     """Base for tool inputs. Unknown fields are rejected rather than silently dropped."""
 
@@ -42,9 +51,20 @@ class Tool(Generic[InputT, OutputT]):
     output_model: type[OutputT]
     handler: Callable[[InputT], Awaitable[OutputT]]
     mocked: bool = False
-    # Acts on the outside world (sends, posts, deletes). Workflows require user approval
-    # before running these, and the free-form agent is never given them.
-    side_effects: bool = False
+    # "read": only fetches data. "external_write": acts on the outside world (sends, posts).
+    # Workflows always require the user's approval before running an external_write tool.
+    risk: Literal["read", "external_write"] = "read"
+    # Input fields the backend fills from upstream task results at run time. The LLM planner
+    # never sees or sets them, so it can't invent data it hasn't fetched yet.
+    bound_inputs: frozenset[str] = frozenset()
+    # external_write tools describe the action for the approval card, from validated input.
+    describe_action: Callable[[InputT], ActionPreview] | None = None
+    # Overrides the registry's default timeout (e.g. LLM calls need longer than a weather lookup).
+    timeout_seconds: float | None = None
+
+    @property
+    def side_effects(self) -> bool:
+        return self.risk == "external_write"
 
     def to_llm_schema(self) -> dict[str, Any]:
         """OpenAI-style function schema; LangChain converts it for any provider."""
@@ -59,7 +79,25 @@ class Tool(Generic[InputT, OutputT]):
         }
 
 
-ToolErrorCode = Literal["unknown_tool", "invalid_arguments", "execution_failed", "timeout", "simulated_failure"]
+ToolErrorCode = Literal[
+    "unknown_tool",
+    "invalid_arguments",
+    "execution_failed",
+    "timeout",
+    "simulated_failure",
+    "not_found",  # e.g. no place matches the location
+    "provider_error",  # the external service failed, refused or returned something unusable
+    "delivery_unknown",  # a send may or may not have happened (never retried automatically)
+]
+
+
+class ToolFailure(Exception):
+    """Raised by a handler for an expected failure. `message` is shown to the user and the LLM, so keep it safe."""
+
+    def __init__(self, code: "ToolErrorCode", message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
 
 
 class ToolError(BaseModel):
@@ -130,11 +168,24 @@ class ToolRegistry:
                 )
             )
 
+        timeout = tool.timeout_seconds or self._timeout_seconds
         try:
-            raw_output = await asyncio.wait_for(tool.handler(parsed), timeout=self._timeout_seconds)
+            raw_output = await asyncio.wait_for(tool.handler(parsed), timeout=timeout)
             output = tool.output_model.model_validate(raw_output)
         except TimeoutError:
-            return failure(ToolError(code="timeout", message=f"Tool timed out after {self._timeout_seconds}s."))
+            if tool.risk == "external_write":
+                # We stopped waiting, but the action may already have happened: never report "not done".
+                return failure(
+                    ToolError(
+                        code="delivery_unknown",
+                        message=f"{_label(name)} didn't finish within {timeout:g}s. It may or may not have happened; "
+                        "check before trying again.",
+                    )
+                )
+            return failure(ToolError(code="timeout", message=f"{_label(name)} didn't respond within {timeout:g}s."))
+        except ToolFailure as exc:
+            logger.warning("Tool '%s' failed: %s (%s)", name, exc.message, exc.code)
+            return failure(ToolError(code=exc.code, message=exc.message))
         except Exception:
             # Log the real error server-side; don't leak internals (paths, keys, stack traces) to the LLM/client.
             logger.exception("Tool '%s' failed", name)
@@ -147,3 +198,7 @@ class ToolRegistry:
             output=output.model_dump(mode="json"),
             mocked=tool.mocked,
         )
+
+
+def _label(name: str) -> str:
+    return name.replace("_", " ").capitalize()

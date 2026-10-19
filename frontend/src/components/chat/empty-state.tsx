@@ -1,11 +1,20 @@
-const SUGGESTIONS = [
+const DEMO_SUGGESTIONS = [
   "Give me a morning briefing and send it to Telegram",
   "What's the weather in Paris and the latest news on the Louvre?",
   "Check my inbox and today's calendar",
   "Check the weather in Oslo and simulate failure",
 ];
 
-export function EmptyState({ onPick, disabled }: { onPick: (text: string) => void; disabled: boolean }) {
+// Requests the live planner and tools can actually serve (weather, web search, Telegram, no-tool answers).
+const LIVE_SUGGESTIONS = [
+  "Check tomorrow's weather in Singapore, search for recent AI news, summarize both, and send the summary to Telegram.",
+  "Will it rain in London this Saturday?",
+  "What's the latest news about the James Webb telescope?",
+  "In one sentence, what's the difference between a process and a thread?",
+];
+
+export function EmptyState({ onPick, disabled, live }: { onPick: (text: string) => void; disabled: boolean; live: boolean }) {
+  const SUGGESTIONS = live ? LIVE_SUGGESTIONS : DEMO_SUGGESTIONS;
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-1 py-10">
       <h1 className="text-[28px] font-semibold leading-tight tracking-tight sm:text-[34px]">What should I take care of?</h1>

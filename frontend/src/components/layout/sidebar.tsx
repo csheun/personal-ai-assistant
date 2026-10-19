@@ -6,20 +6,30 @@ import { useAssistant } from "@/components/assistant-provider";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useNow } from "@/hooks/use-now";
-import { apiMode, type ConnectionStatus } from "@/lib/api";
+import { apiMode, type Capabilities, type ConnectionStatus, type ToolName } from "@/lib/api";
 import { formatRelative } from "@/lib/format";
 
-const INTEGRATIONS: { name: string; icon: LucideIcon; note: string }[] = [
-  { name: "Weather", icon: CloudSun, note: "Mock data" },
-  { name: "Google Calendar", icon: CalendarDays, note: "Mock data" },
-  { name: "Gmail", icon: Mail, note: "Mock data" },
-  { name: "Web search", icon: Globe, note: "Mock data" },
-  { name: "Documents", icon: FileText, note: "Mock data" },
-  { name: "Telegram", icon: Send, note: "Asks before sending" },
+const INTEGRATIONS: { name: string; tool: ToolName; icon: LucideIcon }[] = [
+  { name: "Weather", tool: "get_weather", icon: CloudSun },
+  { name: "Web search", tool: "web_search", icon: Globe },
+  { name: "Telegram", tool: "telegram_send_message", icon: Send },
+  { name: "Google Calendar", tool: "calendar_list_events", icon: CalendarDays },
+  { name: "Gmail", tool: "gmail_search", icon: Mail },
+  { name: "Documents", tool: "document_search", icon: FileText },
 ];
 
+/** Live / Simulated / Not connected, from what the backend reports (GET /api/capabilities). */
+function integrationStatus(capabilities: Capabilities | null, tool: ToolName): { text: string; tone: string } {
+  if (!capabilities) return { text: "", tone: "text-faint" };
+  const info = capabilities.tools.find((t) => t.name === tool);
+  if (!info) return { text: "Not connected", tone: "text-faint" };
+  const state = info.mocked ? "Simulated" : "Live";
+  if (info.risk === "external_write") return { text: `${state}, asks first`, tone: "text-decide-ink" };
+  return { text: state, tone: info.mocked ? "text-faint" : "text-ok" };
+}
+
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { state, connection, selectConversation, loadConversations } = useAssistant();
+  const { state, connection, capabilities, selectConversation, loadConversations } = useAssistant();
   const now = useNow(false);
 
   const open = (id: string | null) => {
@@ -93,19 +103,22 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           Integrations
         </h2>
         <ul className="space-y-0.5">
-          {INTEGRATIONS.map(({ name, icon: Icon, note }) => (
-            <li key={name} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm">
-              <Icon className="size-4 text-muted" aria-hidden />
-              <span className="flex-1 truncate">{name}</span>
-              <span className={`text-[12px] ${name === "Telegram" ? "text-decide-ink" : "text-faint"}`}>{note}</span>
-            </li>
-          ))}
+          {INTEGRATIONS.map(({ name, tool, icon: Icon }) => {
+            const status = integrationStatus(capabilities, tool);
+            return (
+              <li key={name} data-testid={`integration-${tool}`} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm">
+                <Icon className="size-4 text-muted" aria-hidden />
+                <span className="flex-1 truncate">{name}</span>
+                <span className={`text-[12px] ${status.tone}`}>{status.text}</span>
+              </li>
+            );
+          })}
         </ul>
       </section>
 
       <div className="flex items-center justify-between gap-2 border-t border-line px-2 pt-3">
         {apiMode() === "http" ? (
-          <ConnectionNote status={connection} />
+          <ConnectionNote status={connection} live={capabilities?.mode === "live"} />
         ) : (
           <span className="text-[12px] text-faint">Demo mode, runs in your browser</span>
         )}
@@ -117,13 +130,14 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
 const CONNECTION: Record<ConnectionStatus, { text: string; dot: string; tone: string }> = {
   checking: { text: "Connecting to the backend…", dot: "bg-line-strong", tone: "text-faint" },
-  online: { text: "Backend connected, tools mocked", dot: "bg-ok", tone: "text-faint" },
+  online: { text: "Backend connected", dot: "bg-ok", tone: "text-faint" },
   offline: { text: "Can't reach the backend. Retrying…", dot: "bg-fail", tone: "text-fail" },
 };
 
 /** Live backend reachability (HTTP mode). The text carries the meaning; the dot is decoration. */
-function ConnectionNote({ status }: { status: ConnectionStatus }) {
-  const { text, dot, tone } = CONNECTION[status];
+function ConnectionNote({ status, live }: { status: ConnectionStatus; live: boolean }) {
+  const { dot, tone } = CONNECTION[status];
+  const text = status === "online" ? `Backend connected, ${live ? "live AI" : "demo planner"}` : CONNECTION[status].text;
   return (
     <p role="status" className={`flex min-w-0 items-center gap-1.5 text-[12px] ${tone}`}>
       <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${dot}`} />

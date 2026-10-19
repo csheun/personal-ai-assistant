@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { elapsedMs, failureReason, progress, timelineBars } from "@/lib/workflow/metrics";
+import { describePlanning, elapsedMs, failureReason, progress, summarySources, timelineBars } from "@/lib/workflow/metrics";
 import { makeRun } from "./helpers";
 
 const t0 = Date.parse("2026-10-18T09:00:00Z");
@@ -44,5 +44,37 @@ describe("metrics", () => {
   it("explains failures", () => {
     const failed = { ...run, status: "failed" as const, tasks: [{ ...run.tasks[0], status: "failed" as const, status_reason: "boom" }] };
     expect(failureReason(failed)).toBe("Task a: boom");
+  });
+});
+
+describe("summary sources and planning description", () => {
+  const base = makeRun([{ id: "s", tool: "summarize" }]);
+  const withSources = (sources: unknown) => ({
+    ...base,
+    tasks: [
+      {
+        ...base.tasks[0],
+        result: { tool_name: "summarize" as const, arguments: {}, ok: true, output: { text: "x", sources }, error: null, mocked: false },
+      },
+    ],
+  });
+
+  it("returns only well-formed http(s) citations", () => {
+    const run = withSources([
+      { ref: 1, title: "A", url: "https://a.example/x" },
+      { ref: 2, title: "Bad", url: "javascript:alert(1)" },
+      { ref: "3", title: "Wrong type", url: "https://c.example" },
+    ]);
+    expect(summarySources(run)).toEqual([{ ref: 1, title: "A", url: "https://a.example/x" }]);
+    expect(summarySources(base)).toEqual([]);
+  });
+
+  it("describes how a run was planned", () => {
+    expect(describePlanning(null)).toBeNull();
+    expect(describePlanning({ planner: "mock", attempts: 0, duration_ms: 0, usage: [] })).toMatch(/demo planner/);
+    const usage = { purpose: "plan", provider: "groq", model: "openai/gpt-oss-120b", duration_ms: 2250, input_tokens: 1777, output_tokens: 822 };
+    expect(describePlanning({ planner: "llm", attempts: 2, duration_ms: 2250, usage: [usage] })).toBe(
+      "Planned by groq:openai/gpt-oss-120b in 2.3s, 2,599 tokens, 2 attempts",
+    );
   });
 });

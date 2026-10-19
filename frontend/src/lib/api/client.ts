@@ -1,6 +1,7 @@
 import type {
   ApprovalDecision,
   ApprovalRequest,
+  Capabilities,
   ChatMessage,
   Conversation,
   ID,
@@ -53,6 +54,9 @@ export interface WorkflowClient {
 
   /** GET /api/stats */
   getStats(): Promise<UsageStats>;
+
+  /** GET /api/capabilities: mode, model and available tools. */
+  getCapabilities(): Promise<Capabilities>;
 
   /**
    * GET /api/workflows/{id}/events (SSE). Delivers events with id > `afterId` in order,

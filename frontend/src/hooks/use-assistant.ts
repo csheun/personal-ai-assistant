@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import type { ConnectionStatus, WorkflowClient } from "@/lib/api/client";
-import { ApiError, type ApprovalDecision, type ID, type RunStatus } from "@/lib/api/types";
+import { ApiError, type ApprovalDecision, type Capabilities, type ID, type RunStatus } from "@/lib/api/types";
 import { assistantReducer, initialState } from "@/lib/state/assistant-state";
 
 const FINISHED: ReadonlySet<RunStatus> = new Set(["completed", "failed", "cancelled"]);
@@ -20,6 +20,7 @@ export function useAssistantController(client: WorkflowClient) {
   const [state, dispatch] = useReducer(assistantReducer, initialState);
   const [actionError, setActionError] = useState<string | null>(null);
   const [connection, setConnection] = useState<ConnectionStatus>("checking");
+  const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
   const subscriptions = useRef(new Map<ID, () => void>());
   const stateRef = useRef(state);
   useEffect(() => {
@@ -44,6 +45,12 @@ export function useAssistantController(client: WorkflowClient) {
   }, [loadConversations, refreshStats]);
 
   useEffect(() => client.watchConnection(setConnection), [client]);
+
+  // What the backend can do (mode, tools). Reloaded whenever the connection comes (back) up.
+  useEffect(() => {
+    if (connection !== "online") return;
+    client.getCapabilities().then(setCapabilities, () => {});
+  }, [client, connection]);
 
   // Back online after an outage: reload the sidebar if it failed to load meanwhile.
   const wasOffline = useRef(false);
@@ -168,6 +175,7 @@ export function useAssistantController(client: WorkflowClient) {
   return {
     state,
     connection,
+    capabilities,
     actionError,
     dismissActionError: () => setActionError(null),
     loadConversations,
